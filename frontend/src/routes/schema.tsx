@@ -2,6 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  Database,
+  Plus,
+  Table,
+  Hash,
+  Type,
+  Calendar,
+  ToggleLeft,
+  Key,
+  Layers,
+  Check,
+  AlertCircle,
+} from "lucide-react";
+import {
   Collection,
   Field,
   createCollection,
@@ -10,9 +23,28 @@ import {
   fetchFields,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
-import { Button, Card, Input, SectionTitle } from "../components/ui";
+import {
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  Badge,
+  FormField,
+  Select,
+  EmptyState,
+} from "../components/ui";
 
 const FIELD_TYPES = ["string", "int", "float", "bool", "date", "datetime", "uuid"];
+
+const FIELD_TYPE_ICONS: Record<string, React.ReactNode> = {
+  string: <Type className="h-4 w-4" />,
+  int: <Hash className="h-4 w-4" />,
+  float: <Hash className="h-4 w-4" />,
+  bool: <ToggleLeft className="h-4 w-4" />,
+  date: <Calendar className="h-4 w-4" />,
+  datetime: <Calendar className="h-4 w-4" />,
+  uuid: <Key className="h-4 w-4" />,
+};
 
 export default function SchemaPage() {
   const params = useRouterState({ select: (s) => s.matches.at(-1)?.params }) as { projectId: string } | undefined;
@@ -90,167 +122,234 @@ export default function SchemaPage() {
 
   return (
     <div className="space-y-6">
-      <SectionTitle>Schema Builder</SectionTitle>
+      <PageHeader
+        eyebrow="Schema"
+        title="Schema Builder"
+        description="Design your data model with collections and fields"
+        variant="gradient"
+        icon={<Database className="h-6 w-6" />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Collections Panel */}
-        <Card>
-          <h3 className="text-lg font-semibold mb-4">Collections</h3>
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Collections</h3>
+            <Badge tone="indigo">{collectionsQuery.data?.length || 0} tables</Badge>
+          </div>
 
-          <form onSubmit={handleCreateCollection} className="space-y-3 mb-4">
-            <Input
-              placeholder="Collection name (e.g., posts)"
-              value={newCollectionName}
-              onChange={(e) => setNewCollectionName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-            />
-            <Input
-              placeholder="Display name (e.g., Blog Posts)"
-              value={newCollectionDisplayName}
-              onChange={(e) => setNewCollectionDisplayName(e.target.value)}
-            />
-            <Button type="submit" disabled={createCollectionMutation.isPending}>
-              {createCollectionMutation.isPending ? "Creating..." : "Create Collection"}
+          <form onSubmit={handleCreateCollection} className="space-y-3 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <FormField label="Collection name">
+              <Input
+                placeholder="e.g., posts"
+                value={newCollectionName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCollectionName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+              />
+            </FormField>
+            <FormField label="Display name">
+              <Input
+                placeholder="e.g., Blog Posts"
+                value={newCollectionDisplayName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCollectionDisplayName(e.target.value)}
+              />
+            </FormField>
+            <Button type="submit" loading={createCollectionMutation.isPending} icon={<Plus className="h-4 w-4" />} className="w-full">
+              Create Collection
             </Button>
           </form>
 
-          {collectionsQuery.isLoading && <p className="text-gray-500">Loading...</p>}
-          {collectionsQuery.error && <p className="text-red-500">Error loading collections</p>}
+          {collectionsQuery.isLoading && (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100" />
+              ))}
+            </div>
+          )}
+
+          {collectionsQuery.error && (
+            <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-lg">
+              <AlertCircle className="h-4 w-4" />
+              Error loading collections
+            </div>
+          )}
+
+          {!collectionsQuery.isLoading && collectionsQuery.data?.length === 0 && (
+            <EmptyState
+              icon={<Layers className="h-6 w-6" />}
+              title="No collections yet"
+              description="Create your first collection to start building your schema"
+            />
+          )}
 
           <div className="space-y-2">
             {collectionsQuery.data?.map((collection: Collection) => (
               <div
                 key={collection.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${
                   selectedCollection === collection.name
-                    ? "bg-blue-100 border-2 border-blue-500"
-                    : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                    ? "bg-indigo-50 border-indigo-300 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
                 }`}
                 onClick={() => setSelectedCollection(collection.name)}
               >
-                <div className="font-medium">{collection.display_name}</div>
-                <div className="text-sm text-gray-500">{collection.name}</div>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${selectedCollection === collection.name ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-500"}`}>
+                    <Table className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-slate-900">{collection.display_name}</div>
+                    <div className="text-sm text-slate-500 font-mono">{collection.name}</div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </Card>
 
         {/* Fields Panel */}
-        <Card>
-          <h3 className="text-lg font-semibold mb-4">
-            Fields {selectedCollection && <span className="text-gray-500">({selectedCollection})</span>}
-          </h3>
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Fields {selectedCollection && <span className="text-slate-500">• {selectedCollection}</span>}
+            </h3>
+            {fieldsQuery.data && <Badge tone="emerald">{fieldsQuery.data.length} fields</Badge>}
+          </div>
 
           {selectedCollection ? (
             <>
-              <form onSubmit={handleCreateField} className="space-y-3 mb-4">
-                <Input
-                  placeholder="Field name (e.g., title)"
-                  value={newFieldName}
-                  onChange={(e) => setNewFieldName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                />
-                <Input
-                  placeholder="Display name (e.g., Title)"
-                  value={newFieldDisplayName}
-                  onChange={(e) => setNewFieldDisplayName(e.target.value)}
-                />
-                <select
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={newFieldType}
-                  onChange={(e) => setNewFieldType(e.target.value)}
-                >
-                  {FIELD_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex gap-4 text-sm">
-                  <label className="flex items-center gap-1">
+              <form onSubmit={handleCreateField} className="space-y-3 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <FormField label="Field name">
+                  <Input
+                    placeholder="e.g., title"
+                    value={newFieldName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFieldName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                  />
+                </FormField>
+                <FormField label="Display name">
+                  <Input
+                    placeholder="e.g., Title"
+                    value={newFieldDisplayName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFieldDisplayName(e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Field type">
+                  <Select
+                    value={newFieldType}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewFieldType(e.target.value)}
+                  >
+                    {FIELD_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={newFieldRequired}
                       onChange={(e) => setNewFieldRequired(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    Required
+                    <span className="text-slate-700">Required</span>
                   </label>
-                  <label className="flex items-center gap-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={newFieldUnique}
                       onChange={(e) => setNewFieldUnique(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    Unique
+                    <span className="text-slate-700">Unique</span>
                   </label>
-                  <label className="flex items-center gap-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={newFieldIndexed}
                       onChange={(e) => setNewFieldIndexed(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    Indexed
+                    <span className="text-slate-700">Indexed</span>
                   </label>
                 </div>
                 {newFieldRequired && (
-                  <Input
-                    placeholder="Default value (required for existing rows)"
-                    value={newFieldDefault}
-                    onChange={(e) => setNewFieldDefault(e.target.value)}
-                  />
+                  <FormField label="Default value" hint="Required for existing rows">
+                    <Input
+                      placeholder="Default value"
+                      value={newFieldDefault}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFieldDefault(e.target.value)}
+                    />
+                  </FormField>
                 )}
-                <Button type="submit" disabled={createFieldMutation.isPending}>
-                  {createFieldMutation.isPending ? "Adding..." : "Add Field"}
+                <Button type="submit" loading={createFieldMutation.isPending} icon={<Plus className="h-4 w-4" />} className="w-full">
+                  Add Field
                 </Button>
               </form>
 
-              {fieldsQuery.isLoading && <p className="text-gray-500">Loading fields...</p>}
-              {fieldsQuery.error && <p className="text-red-500">Error loading fields</p>}
+              {fieldsQuery.isLoading && (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+                  ))}
+                </div>
+              )}
+
+              {fieldsQuery.error && (
+                <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-lg">
+                  <AlertCircle className="h-4 w-4" />
+                  Error loading fields
+                </div>
+              )}
 
               <div className="space-y-2">
                 {/* System fields */}
-                <div className="p-3 bg-gray-100 rounded-lg opacity-60">
-                  <div className="flex justify-between">
-                    <span className="font-medium">id</span>
-                    <span className="text-sm text-gray-500">bigint (auto)</span>
+                {["id", "created_at", "updated_at"].map((name) => (
+                  <div key={name} className="p-3 bg-slate-100 rounded-xl opacity-70">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-slate-200 text-slate-500">
+                          {name === "id" ? <Hash className="h-3.5 w-3.5" /> : <Calendar className="h-3.5 w-3.5" />}
+                        </div>
+                        <span className="font-medium text-slate-700 font-mono text-sm">{name}</span>
+                      </div>
+                      <Badge tone="slate">{name === "id" ? "bigint" : "datetime"}</Badge>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3 bg-gray-100 rounded-lg opacity-60">
-                  <div className="flex justify-between">
-                    <span className="font-medium">created_at</span>
-                    <span className="text-sm text-gray-500">datetime (auto)</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-gray-100 rounded-lg opacity-60">
-                  <div className="flex justify-between">
-                    <span className="font-medium">updated_at</span>
-                    <span className="text-sm text-gray-500">datetime (auto)</span>
-                  </div>
-                </div>
+                ))}
 
                 {/* User-defined fields */}
                 {fieldsQuery.data?.map((field: Field) => (
-                  <div key={field.id} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{field.display_name}</span>
-                      <span className="text-sm text-gray-500">{field.field_type}</span>
+                  <div key={field.id} className="p-3 bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+                          {FIELD_TYPE_ICONS[field.field_type] || <Type className="h-3.5 w-3.5" />}
+                        </div>
+                        <div>
+                          <span className="font-medium text-slate-900">{field.display_name}</span>
+                          <span className="text-slate-400 font-mono text-xs ml-2">{field.name}</span>
+                        </div>
+                      </div>
+                      <Badge tone="indigo">{field.field_type}</Badge>
                     </div>
-                    <div className="text-sm text-gray-500">{field.name}</div>
-                    <div className="flex gap-2 mt-1">
-                      {field.is_required && (
-                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">required</span>
-                      )}
-                      {field.is_unique && (
-                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">unique</span>
-                      )}
-                      {field.is_indexed && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">indexed</span>
-                      )}
-                    </div>
+                    {(field.is_required || field.is_unique || field.is_indexed) && (
+                      <div className="flex gap-2 mt-2 ml-9">
+                        {field.is_required && <Badge tone="rose">required</Badge>}
+                        {field.is_unique && <Badge tone="purple">unique</Badge>}
+                        {field.is_indexed && <Badge tone="blue">indexed</Badge>}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <p className="text-gray-500">Select a collection to manage its fields</p>
+            <EmptyState
+              icon={<Database className="h-6 w-6" />}
+              title="Select a collection"
+              description="Choose a collection from the left panel to manage its fields"
+            />
           )}
         </Card>
       </div>

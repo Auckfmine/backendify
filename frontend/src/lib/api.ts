@@ -216,7 +216,7 @@ export async function createField(
 export type DataRecord = Record<string, unknown>;
 
 export type DataListResponse = {
-  data: DataRecord[];
+  records: DataRecord[];
   total: number;
   limit: number;
   offset: number;
@@ -365,6 +365,7 @@ export type Policy = {
   priority: number;
   allowed_principals: string | null;  // comma-separated: "admin_user,app_user,api_key,anonymous"
   require_email_verified: boolean;
+  allowed_roles: string | null;  // comma-separated role names for RBAC
   created_at: string;
   updated_at: string;
 };
@@ -377,6 +378,7 @@ export type PolicyCreate = {
   priority?: number;
   allowed_principals?: string;
   require_email_verified?: boolean;
+  allowed_roles?: string;
 };
 
 export async function fetchPolicies(projectId: string, collectionName: string): Promise<Policy[]> {
@@ -1069,10 +1071,31 @@ export async function fetchAppUser(projectId: string, appUserId: string): Promis
   return request<AppUser>(`/api/projects/${projectId}/settings/auth/users/${appUserId}`);
 }
 
+export type AppUserCreate = {
+  email: string;
+  password?: string;
+  is_email_verified?: boolean;
+  is_disabled?: boolean;
+};
+
+export type AppUserUpdate = {
+  email?: string;
+  password?: string;
+  is_disabled?: boolean;
+  is_email_verified?: boolean;
+};
+
+export async function createAppUser(projectId: string, data: AppUserCreate): Promise<AppUser> {
+  return request<AppUser>(`/api/projects/${projectId}/settings/auth/users`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function updateAppUser(
   projectId: string,
   appUserId: string,
-  data: { is_disabled?: boolean; is_email_verified?: boolean }
+  data: AppUserUpdate
 ): Promise<AppUser> {
   return request<AppUser>(`/api/projects/${projectId}/settings/auth/users/${appUserId}`, {
     method: "PATCH",
@@ -1088,6 +1111,102 @@ export async function deleteAppUser(projectId: string, appUserId: string): Promi
 
 export async function revokeAppUserSessions(projectId: string, appUserId: string): Promise<void> {
   return request<void>(`/api/projects/${projectId}/settings/auth/users/${appUserId}/revoke-sessions`, {
+    method: "POST",
+  });
+}
+
+// ============================================================================
+// RBAC - Roles
+// ============================================================================
+
+export type Role = {
+  id: string;
+  project_id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  is_system: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RoleCreate = {
+  name: string;
+  display_name: string;
+  description?: string;
+  is_default?: boolean;
+};
+
+export type RoleUpdate = {
+  display_name?: string;
+  description?: string;
+  is_default?: boolean;
+};
+
+export type UserRoles = {
+  app_user_id: string;
+  roles: Role[];
+};
+
+// Roles
+export async function fetchRoles(projectId: string): Promise<Role[]> {
+  return request<Role[]>(`/api/projects/${projectId}/rbac/roles`);
+}
+
+export async function fetchRole(projectId: string, roleId: string): Promise<Role> {
+  return request<Role>(`/api/projects/${projectId}/rbac/roles/${roleId}`);
+}
+
+export async function createRole(projectId: string, data: RoleCreate): Promise<Role> {
+  return request<Role>(`/api/projects/${projectId}/rbac/roles`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRole(projectId: string, roleId: string, data: RoleUpdate): Promise<Role> {
+  return request<Role>(`/api/projects/${projectId}/rbac/roles/${roleId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRole(projectId: string, roleId: string): Promise<void> {
+  return request<void>(`/api/projects/${projectId}/rbac/roles/${roleId}`, {
+    method: "DELETE",
+  });
+}
+
+// User Roles
+export async function fetchUserRoles(projectId: string, appUserId: string): Promise<UserRoles> {
+  return request<UserRoles>(`/api/projects/${projectId}/rbac/users/${appUserId}/roles`);
+}
+
+export async function assignUserRoles(
+  projectId: string,
+  appUserId: string,
+  roleIds: string[]
+): Promise<UserRoles> {
+  return request<UserRoles>(`/api/projects/${projectId}/rbac/users/${appUserId}/roles`, {
+    method: "POST",
+    body: JSON.stringify({ role_ids: roleIds }),
+  });
+}
+
+export async function removeUserRole(
+  projectId: string,
+  appUserId: string,
+  roleId: string
+): Promise<void> {
+  return request<void>(`/api/projects/${projectId}/rbac/users/${appUserId}/roles/${roleId}`, {
+    method: "DELETE",
+  });
+}
+
+// Initialize RBAC
+export async function initializeRbac(projectId: string): Promise<{ roles_created: number }> {
+  return request<{ roles_created: number }>(`/api/projects/${projectId}/rbac/initialize`, {
     method: "POST",
   });
 }

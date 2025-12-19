@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { ScrollText, Filter, Clock, User, Database, Activity, GitBranch } from "lucide-react";
 import {
   AuditEvent,
   AuditEventFilters,
@@ -11,7 +12,7 @@ import {
   fetchSchemaOps,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
-import { Card, SectionTitle } from "../components/ui";
+import { Card, PageHeader, Badge, Select, FormField, EmptyState } from "../components/ui";
 
 const ACTION_OPTIONS = [
   { value: "", label: "All Actions" },
@@ -297,46 +298,60 @@ export default function LogsPage() {
 
   return (
     <div className="space-y-6">
-      <SectionTitle>Logs</SectionTitle>
+      <PageHeader
+        eyebrow="Observability"
+        title="Audit Logs"
+        description="Track all data changes and authentication events"
+        icon={<ScrollText className="h-6 w-6" />}
+      />
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b">
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
         <button
-          className={`px-4 py-2 font-medium ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === "audit"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
           }`}
           onClick={() => setActiveTab("audit")}
         >
-          Audit Events
+          <span className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Audit Events
+          </span>
         </button>
         <button
-          className={`px-4 py-2 font-medium ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === "schema"
-              ? "border-b-2 border-blue-500 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
           }`}
           onClick={() => setActiveTab("schema")}
         >
-          Schema Operations
+          <span className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Schema Operations
+          </span>
         </button>
       </div>
 
       {/* Audit Events Tab */}
       {activeTab === "audit" && (
-        <Card>
+        <Card padding="md">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Data Audit Events</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Data Audit Events</h3>
             {auditQuery.data && (
-              <span className="text-sm text-gray-500">
-                {auditQuery.data.total} total events
-              </span>
+              <Badge tone="indigo">{auditQuery.data.total} events</Badge>
             )}
           </div>
 
           {/* Filters */}
-          <div className="mb-6 space-y-4">
+          <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Filter className="h-4 w-4 text-slate-500" />
+              <span className="text-sm font-medium text-slate-700">Filters</span>
+            </div>
+            
             {/* Search bar */}
             <div className="flex gap-2">
               <input
@@ -345,17 +360,17 @@ export default function LogsPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
               />
               <button
                 onClick={handleSearch}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
               >
                 Search
               </button>
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 Clear
               </button>
@@ -364,11 +379,11 @@ export default function LogsPage() {
             {/* Filter dropdowns */}
             <div className="flex flex-wrap gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 uppercase">Collection</label>
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Collection</label>
                 <select
                   value={filters.collection_id || ""}
                   onChange={(e) => handleFilterChange("collection_id", e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
                 >
                   <option value="">All Collections</option>
                   {collectionsQuery.data?.map((col: Collection) => (
@@ -378,11 +393,11 @@ export default function LogsPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 uppercase">Action</label>
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Action</label>
                 <select
                   value={filters.action || ""}
                   onChange={(e) => handleFilterChange("action", e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
                 >
                   {ACTION_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -391,11 +406,11 @@ export default function LogsPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 uppercase">Actor Type</label>
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Actor Type</label>
                 <select
                   value={filters.actor_type || ""}
                   onChange={(e) => handleFilterChange("actor_type", e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
                 >
                   {ACTOR_TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -404,7 +419,7 @@ export default function LogsPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 uppercase">Time Range</label>
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Time Range</label>
                 <select
                   value={timeRange}
                   onChange={(e) => { 
@@ -413,7 +428,7 @@ export default function LogsPage() {
                     setTimeRangeTimestamp(val && val !== "custom" ? Date.now() : null);
                     setCurrentPage(0); 
                   }}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
                 >
                   {TIME_RANGE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -422,13 +437,13 @@ export default function LogsPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 uppercase">Record ID</label>
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Record ID</label>
                 <input
                   type="text"
                   placeholder="Filter by record ID"
                   value={filters.record_id || ""}
                   onChange={(e) => handleFilterChange("record_id", e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 w-48"
                 />
               </div>
             </div>
@@ -437,29 +452,39 @@ export default function LogsPage() {
             {timeRange === "custom" && (
               <div className="flex gap-3 items-end">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-500 uppercase">Start Date</label>
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Start Date</label>
                   <input
                     type="datetime-local"
                     value={customStartDate}
                     onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(0); }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-gray-500 uppercase">End Date</label>
+                  <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">End Date</label>
                   <input
                     type="datetime-local"
                     value={customEndDate}
                     onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(0); }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {auditQuery.isLoading && <p className="text-gray-500">Loading...</p>}
-          {auditQuery.error && <p className="text-red-500">Error loading audit events</p>}
+          {auditQuery.isLoading && (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          )}
+          {auditQuery.error && (
+            <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-lg">
+              Error loading audit events
+            </div>
+          )}
           
           {auditQuery.data?.events.length === 0 && (
             <p className="text-gray-500">No audit events found matching your filters</p>
@@ -614,52 +639,70 @@ export default function LogsPage() {
 
       {/* Schema Operations Tab */}
       {activeTab === "schema" && (
-        <Card>
-          <h3 className="text-lg font-semibold mb-4">Schema Change Log</h3>
-          {schemaOpsQuery.isLoading && <p className="text-gray-500">Loading...</p>}
-          {schemaOpsQuery.error && <p className="text-red-500">Error loading schema operations</p>}
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Schema Change Log</h3>
+            <Badge tone="indigo">{schemaOpsQuery.data?.length || 0} operations</Badge>
+          </div>
+          
+          {schemaOpsQuery.isLoading && (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          )}
+          {schemaOpsQuery.error && (
+            <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-xl border border-rose-200">
+              Error loading schema operations
+            </div>
+          )}
           
           {schemaOpsQuery.data?.length === 0 && (
-            <p className="text-gray-500">No schema operations yet</p>
+            <EmptyState
+              icon={<GitBranch className="h-6 w-6" />}
+              title="No schema operations"
+              description="Schema changes will appear here"
+            />
           )}
 
           {schemaOpsQuery.data && schemaOpsQuery.data.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operation</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Time</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Operation</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Status</th>
+                    <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Details</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {schemaOpsQuery.data.map((op: SchemaOp) => (
-                    <tr key={op.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                    <tr key={op.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 text-slate-500">
                         {new Date(op.created_at).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          op.op_type === "create_schema" ? "bg-purple-100 text-purple-800" :
-                          op.op_type === "create_table" ? "bg-green-100 text-green-800" :
-                          op.op_type === "add_column" ? "bg-blue-100 text-blue-800" :
-                          "bg-gray-100 text-gray-800"
-                        }`}>
+                        <Badge tone={
+                          op.op_type === "create_schema" ? "purple" :
+                          op.op_type === "create_table" ? "emerald" :
+                          op.op_type === "add_column" ? "indigo" :
+                          "slate"
+                        }>
                           {op.op_type}
-                        </span>
+                        </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          op.status === "applied" ? "bg-green-100 text-green-800" :
-                          op.status === "failed" ? "bg-red-100 text-red-800" :
-                          "bg-yellow-100 text-yellow-800"
-                        }`}>
+                        <Badge tone={
+                          op.status === "applied" ? "emerald" :
+                          op.status === "failed" ? "rose" :
+                          "amber"
+                        }>
                           {op.status}
-                        </span>
+                        </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
+                      <td className="px-4 py-3 text-slate-500 max-w-xs truncate font-mono text-xs">
                         {op.payload_json}
                       </td>
                     </tr>

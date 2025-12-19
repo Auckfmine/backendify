@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { CheckSquare, Plus, Trash2, AlertCircle, Shield } from "lucide-react";
 import {
   createValidationRule,
   deleteValidationRule,
@@ -13,6 +14,7 @@ import {
   type ValidationRule,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { Button, Card, Input, PageHeader, Badge, FormField, Select, EmptyState } from "../components/ui";
 
 export default function ValidationsPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
@@ -99,32 +101,42 @@ export default function ValidationsPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Validation Rules</h1>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Data Quality"
+        title="Validation Rules"
+        description="Define constraints and validation rules for your data"
+        icon={<CheckSquare className="h-6 w-6" />}
+      />
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-xl border border-rose-200">
+          <AlertCircle className="h-4 w-4" />
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-emerald-600 text-sm p-3 bg-emerald-50 rounded-xl border border-emerald-200">
           {success}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Collections</h2>
+        {/* Collections Sidebar */}
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Collections</h2>
+            <Badge tone="indigo">{collectionsQuery.data?.length || 0}</Badge>
+          </div>
           <div className="space-y-2">
             {collectionsQuery.data?.map((c) => (
               <div
                 key={c.id}
-                className={`p-2 rounded cursor-pointer border text-sm ${
+                className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
                   selectedCollection?.id === c.id
-                    ? "bg-blue-50 border-blue-300"
-                    : "hover:bg-gray-50 border-gray-200"
+                    ? "bg-indigo-50 border-indigo-300 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-slate-300"
                 }`}
                 onClick={() => {
                   setSelectedCollection(c);
@@ -132,41 +144,56 @@ export default function ValidationsPage() {
                   setShowCreateForm(false);
                 }}
               >
-                {c.display_name}
+                <div className="flex items-center gap-2">
+                  <Shield className={`h-4 w-4 ${selectedCollection?.id === c.id ? "text-indigo-600" : "text-slate-400"}`} />
+                  <span className="font-medium text-slate-900">{c.display_name}</span>
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Fields</h2>
+        {/* Fields Sidebar */}
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Fields</h2>
+            {fieldsQuery.data && <Badge tone="slate">{fieldsQuery.data.length}</Badge>}
+          </div>
           {selectedCollection ? (
             <div className="space-y-2">
               {fieldsQuery.data?.map((f) => (
                 <div
                   key={f.id}
-                  className={`p-2 rounded cursor-pointer border text-sm ${
+                  className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
                     selectedField?.id === f.id
-                      ? "bg-blue-50 border-blue-300"
-                      : "hover:bg-gray-50 border-gray-200"
+                      ? "bg-indigo-50 border-indigo-300 shadow-sm"
+                      : "bg-white border-slate-200 hover:border-slate-300"
                   }`}
                   onClick={() => {
                     setSelectedField(f);
                     setShowCreateForm(false);
                   }}
                 >
-                  <div className="font-medium">{f.display_name}</div>
-                  <div className="text-xs text-gray-500">{f.field_type}</div>
+                  <div className="font-medium text-slate-900">{f.display_name}</div>
+                  <Badge tone="slate">{f.field_type}</Badge>
                 </div>
               ))}
               {fieldsQuery.data?.length === 0 && (
-                <p className="text-gray-500 text-sm">No fields</p>
+                <EmptyState
+                  icon={<CheckSquare className="h-5 w-5" />}
+                  title="No fields"
+                  description="Add fields to this collection first"
+                />
               )}
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">Select a collection</p>
+            <EmptyState
+              icon={<CheckSquare className="h-5 w-5" />}
+              title="Select a collection"
+              description="Choose a collection to see its fields"
+            />
           )}
-        </div>
+        </Card>
 
         <div className="lg:col-span-2 space-y-6">
           {selectedField ? (
@@ -181,12 +208,13 @@ export default function ValidationsPage() {
                       {selectedCollection?.name}.{selectedField.name} ({selectedField.field_type})
                     </p>
                   </div>
-                  <button
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                  <Button
                     onClick={() => setShowCreateForm(!showCreateForm)}
+                    variant={showCreateForm ? "secondary" : "primary"}
+                    icon={showCreateForm ? undefined : <Plus className="h-4 w-4" />}
                   >
                     {showCreateForm ? "Cancel" : "Add Rule"}
-                  </button>
+                  </Button>
                 </div>
 
                 {showCreateForm && (
@@ -197,14 +225,12 @@ export default function ValidationsPage() {
                       setSuccess(null);
                       createMutation.mutate();
                     }}
-                    className="mb-6 p-4 bg-gray-50 rounded-lg space-y-4"
+                    className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4"
                   >
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Rule Type</label>
-                      <select
-                        className="w-full border rounded px-3 py-2"
+                    <FormField label="Rule Type">
+                      <Select
                         value={formData.rule_type}
-                        onChange={(e) => setFormData({ ...formData, rule_type: e.target.value, config: {} })}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, rule_type: e.target.value, config: {} })}
                         required
                       >
                         <option value="">-- Select Rule Type --</option>
@@ -215,79 +241,72 @@ export default function ValidationsPage() {
                               {rt.type}
                             </option>
                           ))}
-                      </select>
-                    </div>
+                      </Select>
+                    </FormField>
 
                     {selectedRuleType && Object.keys(selectedRuleType.config_schema).length > 0 && (
                       <div className="space-y-3">
-                        <label className="block text-sm font-medium">Configuration</label>
+                        <label className="block text-sm font-medium text-slate-700">Configuration</label>
                         {Object.entries(selectedRuleType.config_schema).map(([key, type]) => (
-                          <div key={key}>
-                            <label className="block text-xs text-gray-600 mb-1">
-                              {key} ({type})
-                            </label>
-                            <input
+                          <FormField key={key} label={`${key} (${type})`}>
+                            <Input
                               type={type === "int" || type === "number" ? "number" : "text"}
-                              className="w-full border rounded px-3 py-2 text-sm"
                               placeholder={type === "list" ? "comma,separated,values" : `Enter ${key}`}
-                              onChange={(e) => handleConfigChange(key, e.target.value)}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleConfigChange(key, e.target.value)}
                             />
-                          </div>
+                          </FormField>
                         ))}
                       </div>
                     )}
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Custom Error Message (optional)</label>
-                      <input
-                        type="text"
-                        className="w-full border rounded px-3 py-2"
+                    <FormField label="Custom Error Message" hint="Optional">
+                      <Input
                         value={formData.error_message}
-                        onChange={(e) => setFormData({ ...formData, error_message: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, error_message: e.target.value })}
                         placeholder="e.g., Please enter a valid value"
                       />
-                    </div>
+                    </FormField>
 
-                    <button
+                    <Button
                       type="submit"
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                      disabled={createMutation.isPending || !formData.rule_type}
+                      loading={createMutation.isPending}
+                      disabled={!formData.rule_type}
+                      icon={<Plus className="h-4 w-4" />}
+                      className="w-full"
                     >
-                      {createMutation.isPending ? "Creating..." : "Create Rule"}
-                    </button>
+                      Create Rule
+                    </Button>
                   </form>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {rulesQuery.data?.map((rule: ValidationRule) => (
-                    <div key={rule.id} className="p-3 border rounded-lg">
+                    <div key={rule.id} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-medium">
-                            <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-sm">
-                              {rule.rule_type}
-                            </span>
-                          </div>
+                          <Badge tone="purple">{rule.rule_type}</Badge>
                           {rule.config && Object.keys(rule.config).length > 0 && (
-                            <div className="text-sm text-gray-600 mt-1">
-                              Config: {JSON.stringify(rule.config)}
+                            <div className="text-sm text-slate-600 mt-2 font-mono bg-slate-50 p-2 rounded-lg">
+                              {JSON.stringify(rule.config)}
                             </div>
                           )}
                           {rule.error_message && (
-                            <div className="text-sm text-gray-500 mt-1">
+                            <div className="text-sm text-slate-500 mt-1">
                               Message: "{rule.error_message}"
                             </div>
                           )}
                         </div>
                         <button
-                          className="text-red-600 text-sm hover:underline"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
                           onClick={() => deleteMutation.mutate(rule.id)}
                         >
+                          <Trash2 className="h-3.5 w-3.5" />
                           Delete
                         </button>
                       </div>
-                      <div className="text-xs text-gray-400 mt-2">
-                        {rule.is_active ? "Active" : "Inactive"} • Priority: {rule.priority}
+                      <div className="flex gap-2 mt-2">
+                        {rule.is_active ? <Badge tone="emerald">Active</Badge> : <Badge tone="slate">Inactive</Badge>}
+                        <Badge tone="slate">Priority: {rule.priority}</Badge>
                       </div>
                     </div>
                   ))}

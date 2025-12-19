@@ -11,6 +11,7 @@ class PolicyCreate(BaseModel):
     priority: int = Field(default=0, description="Higher priority policies are evaluated first")
     allowed_principals: str | None = Field(default=None, description="Comma-separated list: admin_user,app_user,api_key,anonymous")
     require_email_verified: bool = Field(default=False, description="Require app_user to have verified email")
+    allowed_roles: str | None = Field(default=None, description="Comma-separated list of role names for RBAC")
 
 
 class PolicyUpdate(BaseModel):
@@ -21,6 +22,7 @@ class PolicyUpdate(BaseModel):
     is_active: bool | None = None
     allowed_principals: str | None = None
     require_email_verified: bool | None = None
+    allowed_roles: str | None = None
 
 
 class PolicyOut(BaseModel):
@@ -34,6 +36,7 @@ class PolicyOut(BaseModel):
     priority: int
     allowed_principals: str | None
     require_email_verified: bool
+    allowed_roles: str | None
     created_at: datetime
     updated_at: datetime
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import api_keys, app_auth, audit, auth, auth_settings, collections, data, files, policies, projects, relations, schema_evolution, users, validations, views, webhooks, workflows
+from app.api.routes import api_keys, app_auth, audit, auth, auth_settings, collections, data, files, policies, projects, rbac, relations, schema_evolution, users, validations, views, webhooks, workflows
 
 api_router = APIRouter(prefix="/api")
 
@@ -26,3 +26,4 @@ api_router.include_router(data.router, prefix="/projects/{project_id}/data", tag
 api_router.include_router(audit.router, prefix="/projects/{project_id}/audit", tags=["audit"])
 api_router.include_router(webhooks.router, prefix="/projects/{project_id}/webhooks", tags=["webhooks"])
 api_router.include_router(workflows.router, prefix="/projects/{project_id}/workflows", tags=["workflows"])
+api_router.include_router(rbac.router, prefix="/projects/{project_id}/rbac", tags=["rbac"])

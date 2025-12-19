@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.collection import Collection
+from app.models.collection import Collection, USERS_COLLECTION_NAME
 from app.models.field import Field
 from app.models.project import Project
 from app.services.schema_manager import (
@@ -12,6 +12,9 @@ from app.services.schema_manager import (
     validate_slug,
 )
 
+# Reserved collection names that cannot be created by users
+RESERVED_COLLECTION_NAMES = {USERS_COLLECTION_NAME}
+
 
 def create_collection(
     db: Session,
@@ -20,6 +23,13 @@ def create_collection(
     display_name: str,
     actor_user_id: str | None = None,
 ) -> Collection:
+    # Check for reserved names
+    if name in RESERVED_COLLECTION_NAMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Collection name '{name}' is reserved for system use.",
+        )
+    
     if not validate_slug(name):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -104,6 +114,12 @@ def add_field(
         Field.name == name,
     ).first()
     if existing:
+        # Check if trying to modify a system field
+        if existing.is_system:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Field '{name}' is a system field and cannot be modified.",
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Field with this name already exists",
@@ -125,6 +141,8 @@ def add_field(
         is_unique=is_unique,
         is_indexed=is_indexed,
         default_value=default_value,
+        is_system=False,
+        is_hidden=False,
     )
     db.add(field)
     db.flush()
@@ -135,8 +153,48 @@ def add_field(
     return field
 
 
-def list_fields(db: Session, collection: Collection) -> list[Field]:
-    return db.query(Field).filter(
+def delete_field(
+    db: Session,
+    collection: Collection,
+    field_name: str,
+) -> None:
+    """Soft delete a field (mark as deleted)."""
+    field = db.query(Field).filter(
+        Field.collection_id == collection.id,
+        Field.name == field_name,
+        Field.is_deleted == False,
+    ).first()
+    
+    if not field:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Field not found",
+        )
+    
+    if field.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Field '{field_name}' is a system field and cannot be deleted.",
+        )
+    
+    from datetime import datetime
+    field.is_deleted = True
+    field.deleted_at = datetime.utcnow()
+    db.commit()
+
+
+def list_fields(db: Session, collection: Collection, include_hidden: bool = False) -> list[Field]:
+    """List fields for a collection.
+    
+    Args:
+        db: Database session
+        collection: The collection to list fields for
+        include_hidden: If False (default), hidden fields like password_hash are excluded
+    """
+    query = db.query(Field).filter(
         Field.collection_id == collection.id,
         Field.is_deleted == False,
-    ).all()
+    )
+    if not include_hidden:
+        query = query.filter(Field.is_hidden == False)
+    return query.all()

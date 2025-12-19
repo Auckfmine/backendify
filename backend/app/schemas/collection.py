@@ -14,6 +14,7 @@ class CollectionOut(BaseModel):
     display_name: str
     sql_table_name: str
     is_active: bool
+    is_system: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -40,6 +41,8 @@ class FieldOut(BaseModel):
     is_unique: bool
     is_indexed: bool
     default_value: str | None
+    is_system: bool = False
+    is_hidden: bool = False
     relation_target_collection_id: str | None = None
     relation_type: str | None = None
     relation_on_delete: str | None = None

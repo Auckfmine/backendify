@@ -6,11 +6,20 @@ import { RouterProvider } from "@tanstack/react-router";
 import "./index.css";
 import { queryClient } from "./lib/queryClient";
 import { router } from "./router";
+import { ToastProvider } from "./components/Toast";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { QueryErrorHandler } from "./components/QueryErrorHandler";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <QueryErrorHandler>
+            <RouterProvider router={router} />
+          </QueryErrorHandler>
+        </ToastProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

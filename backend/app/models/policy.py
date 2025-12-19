@@ -23,6 +23,9 @@ class Policy(Base):
     allowed_principals: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Require email verification for app_user principal
     require_email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Allowed roles: comma-separated list of role names (RBAC integration)
+    # If NULL or empty, role check is skipped
+    allowed_roles: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

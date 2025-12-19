@@ -33,6 +33,7 @@ def create_policy_endpoint(
         priority=payload.priority,
         allowed_principals=payload.allowed_principals,
         require_email_verified=payload.require_email_verified,
+        allowed_roles=payload.allowed_roles,
     )
 
 
@@ -77,6 +78,7 @@ def update_policy_endpoint(
         is_active=payload.is_active,
         allowed_principals=payload.allowed_principals,
         require_email_verified=payload.require_email_verified,
+        allowed_roles=payload.allowed_roles,
     )
 
 

@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import {
+  Table2,
+  Plus,
+  Trash2,
+  Database,
+  AlertCircle,
+  Layers,
+} from "lucide-react";
 import {
   Collection,
   Field,
@@ -12,7 +20,15 @@ import {
   deleteRecord,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
-import { Button, Card, Input, SectionTitle } from "../components/ui";
+import {
+  Button,
+  Card,
+  Input,
+  PageHeader,
+  Badge,
+  FormField,
+  EmptyState,
+} from "../components/ui";
 
 function RelationSelect({
   field,
@@ -35,7 +51,7 @@ function RelationSelect({
     enabled: !!targetCollection,
   });
 
-  const records = recordsQuery.data?.data || [];
+  const records = recordsQuery.data?.records || [];
 
   return (
     <select
@@ -113,25 +129,39 @@ export default function DataExplorerPage() {
   };
 
   const fields = fieldsQuery.data || [];
-  const records = recordsQuery.data?.data || [];
+  const records = recordsQuery.data?.records || [];
 
   return (
     <div className="space-y-6">
-      <SectionTitle>Data Explorer</SectionTitle>
+      <PageHeader
+        eyebrow="Data"
+        title="Data Explorer"
+        description="Browse, create, and manage records in your collections"
+        icon={<Table2 className="h-6 w-6" />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Collections Sidebar */}
-        <Card className="lg:col-span-1">
-          <h3 className="text-lg font-semibold mb-4">Collections</h3>
-          {collectionsQuery.isLoading && <p className="text-gray-500">Loading...</p>}
+        <Card padding="md" className="lg:col-span-1">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">Collections</h3>
+            <Badge tone="indigo">{collectionsQuery.data?.length || 0}</Badge>
+          </div>
+          {collectionsQuery.isLoading && (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+              ))}
+            </div>
+          )}
           <div className="space-y-2">
             {collectionsQuery.data?.map((collection: Collection) => (
               <div
                 key={collection.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
                   selectedCollection === collection.name
-                    ? "bg-blue-100 border-2 border-blue-500"
-                    : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                    ? "bg-indigo-50 border-indigo-300 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-slate-300"
                 }`}
                 onClick={() => {
                   setSelectedCollection(collection.name);
@@ -139,51 +169,74 @@ export default function DataExplorerPage() {
                   setNewRecordData({});
                 }}
               >
-                <div className="font-medium">{collection.display_name}</div>
-                <div className="text-sm text-gray-500">{collection.name}</div>
+                <div className="flex items-center gap-2">
+                  <Database className={`h-4 w-4 ${selectedCollection === collection.name ? "text-indigo-600" : "text-slate-400"}`} />
+                  <div>
+                    <div className="font-medium text-slate-900">{collection.display_name}</div>
+                    <div className="text-xs text-slate-500 font-mono">{collection.name}</div>
+                  </div>
+                </div>
               </div>
             ))}
             {!collectionsQuery.data?.length && !collectionsQuery.isLoading && (
-              <p className="text-sm text-gray-500">No collections yet</p>
+              <EmptyState
+                icon={<Layers className="h-5 w-5" />}
+                title="No collections"
+                description="Create collections in Schema Builder first"
+              />
             )}
           </div>
         </Card>
 
         {/* Data Table */}
-        <Card className="lg:col-span-3">
-          {selectedCollection ? (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">{selectedCollection}</h3>
-                <Button onClick={() => setShowCreateForm(!showCreateForm)}>
+        <Card padding="md" className="lg:col-span-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Records {selectedCollection && <span className="text-slate-500">• {selectedCollection}</span>}
+            </h3>
+            {selectedCollection && (
+              <div className="flex items-center gap-2">
+                {recordsQuery.data && <Badge tone="emerald">{recordsQuery.data.total} records</Badge>}
+                <Button 
+                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  icon={showCreateForm ? undefined : <Plus className="h-4 w-4" />}
+                  variant={showCreateForm ? "secondary" : "primary"}
+                >
                   {showCreateForm ? "Cancel" : "New Record"}
                 </Button>
               </div>
+            )}
+          </div>
 
+          {selectedCollection ? (
+            <>
               {/* Create Form */}
               {showCreateForm && (
-                <form onSubmit={handleCreateRecord} className="mb-6 p-4 bg-gray-50 rounded-lg space-y-3">
-                  <h4 className="font-medium">Create New Record</h4>
+                <form onSubmit={handleCreateRecord} className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                  <h4 className="font-medium text-slate-900">Create New Record</h4>
                   
                   {Object.keys(validationErrors).length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                      <p className="text-red-700 font-medium text-sm mb-2">Validation Errors:</p>
-                      <ul className="text-red-600 text-sm list-disc list-inside">
-                        {Object.entries(validationErrors).map(([fieldName, errors]) => (
-                          <li key={fieldName}>
-                            <strong>{fieldName}:</strong> {errors.join(", ")}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="flex items-start gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-lg border border-rose-200">
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium mb-1">Validation Errors:</p>
+                        <ul className="list-disc list-inside">
+                          {Object.entries(validationErrors).map(([fieldName, errors]) => (
+                            <li key={fieldName}>
+                              <strong>{fieldName}:</strong> {errors.join(", ")}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   )}
                   
                   {fields.map((field: Field) => (
-                    <div key={field.id}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {field.display_name}
-                        {field.is_required && <span className="text-red-500 ml-1">*</span>}
-                      </label>
+                    <FormField 
+                      key={field.id} 
+                      label={field.display_name}
+                      hint={field.is_required ? "Required" : undefined}
+                    >
                       {field.field_type === "relation" ? (
                         <RelationSelect
                           field={field}
@@ -197,74 +250,76 @@ export default function DataExplorerPage() {
                       ) : (
                         <Input
                           type={field.field_type === "int" || field.field_type === "float" ? "number" : "text"}
-                          placeholder={`${field.name} (${field.field_type})`}
+                          placeholder={`Enter ${field.display_name.toLowerCase()}`}
                           value={newRecordData[field.name] || ""}
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             setNewRecordData({ ...newRecordData, [field.name]: e.target.value })
                           }
-                          className={validationErrors[field.name] ? "border-red-500" : ""}
+                          className={validationErrors[field.name] ? "border-rose-500" : ""}
                         />
                       )}
-                      {validationErrors[field.name] && (
-                        <p className="text-red-500 text-xs mt-1">{validationErrors[field.name].join(", ")}</p>
-                      )}
-                    </div>
+                    </FormField>
                   ))}
-                  <Button type="submit" disabled={createRecordMutation.isPending}>
-                    {createRecordMutation.isPending ? "Creating..." : "Create"}
+                  <Button type="submit" loading={createRecordMutation.isPending} icon={<Plus className="h-4 w-4" />} className="w-full">
+                    Create Record
                   </Button>
                 </form>
               )}
 
               {/* Records Table */}
               {recordsQuery.isLoading ? (
-                <p className="text-gray-500">Loading records...</p>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+                  ))}
+                </div>
               ) : records.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                           ID
                         </th>
                         {fields.map((field: Field) => (
                           <th
                             key={field.id}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                            className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
                           >
                             {field.display_name}
                           </th>
                         ))}
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                           Created
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-slate-100">
                       {records.map((record: DataRecord) => (
-                        <tr key={String(record.id)} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-900">{String(record.id)}</td>
+                        <tr key={String(record.id)} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-mono text-slate-900">{String(record.id)}</td>
                           {fields.map((field: Field) => (
-                            <td key={field.id} className="px-4 py-3 text-sm text-gray-900">
-                              {String(record[field.name] ?? "")}
+                            <td key={field.id} className="px-4 py-3 text-sm text-slate-700">
+                              {String(record[field.name] ?? "—")}
                             </td>
                           ))}
-                          <td className="px-4 py-3 text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-slate-500">
                             {record.created_at
-                              ? new Date(String(record.created_at)).toLocaleString()
-                              : "-"}
+                              ? new Date(String(record.created_at)).toLocaleDateString()
+                              : "—"}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Button
-                              className="bg-red-600 hover:bg-red-700 text-xs px-2 py-1"
+                            <button
                               onClick={() => deleteRecordMutation.mutate(Number(record.id))}
                               disabled={deleteRecordMutation.isPending}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
                             >
+                              <Trash2 className="h-3.5 w-3.5" />
                               Delete
-                            </Button>
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -272,17 +327,19 @@ export default function DataExplorerPage() {
                   </table>
                 </div>
               ) : (
-                <p className="text-gray-500">No records yet</p>
-              )}
-
-              {recordsQuery.data && (
-                <p className="mt-4 text-sm text-gray-500">
-                  Total: {recordsQuery.data.total} records
-                </p>
+                <EmptyState
+                  icon={<Table2 className="h-6 w-6" />}
+                  title="No records yet"
+                  description="Create your first record using the form above"
+                />
               )}
             </>
           ) : (
-            <p className="text-gray-500">Select a collection to view data</p>
+            <EmptyState
+              icon={<Database className="h-6 w-6" />}
+              title="Select a collection"
+              description="Choose a collection from the left panel to view and manage its records"
+            />
           )}
         </Card>
       </div>

@@ -17,7 +17,8 @@ class AuditEvent(Base):
     action: Mapped[str] = mapped_column(String(32), nullable=False)  # Increased for auth actions
     actor_user_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id"), nullable=True)
     actor_api_key_id: Mapped[str | None] = mapped_column(String, ForeignKey("api_keys.id"), nullable=True)
-    actor_app_user_id: Mapped[str | None] = mapped_column(String, ForeignKey("app_users.id"), nullable=True, index=True)
+    # References _users collection record by ID (no FK since it's in project schema)
+    actor_app_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     old_data_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     new_data_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)

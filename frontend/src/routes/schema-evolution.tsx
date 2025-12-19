@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { GitMerge, RefreshCw, Trash2, RotateCcw, AlertTriangle, ArrowRight } from "lucide-react";
 import {
   changeFieldType,
   fetchActiveAliases,
@@ -17,6 +18,7 @@ import {
   type Field,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { Button, Card, Input, PageHeader, Badge, FormField, Select, EmptyState } from "../components/ui";
 
 export default function SchemaEvolutionPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
@@ -180,28 +182,37 @@ export default function SchemaEvolutionPage() {
     restoreMutation.isPending || changeTypeMutation.isPending;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Schema Evolution</h1>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Schema"
+        title="Schema Evolution"
+        description="Safely migrate and evolve your data schema"
+        icon={<GitMerge className="h-6 w-6" />}
+      />
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-xl border border-rose-200">
+          <AlertTriangle className="h-4 w-4" />
           {error}
         </div>
       )}
       
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-emerald-600 text-sm p-3 bg-emerald-50 rounded-xl border border-emerald-200">
           {success}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Select Collection</h2>
-          <select
-            className="w-full border rounded px-3 py-2 mb-4"
+        {/* Collection & Fields Panel */}
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Select Collection</h2>
+            <Badge tone="indigo">{collectionsQuery.data?.length || 0}</Badge>
+          </div>
+          <Select
             value={selectedCollection?.id || ""}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               const coll = collectionsQuery.data?.find((c) => c.id === e.target.value);
               setSelectedCollection(coll || null);
               setSelectedField(null);
@@ -214,35 +225,39 @@ export default function SchemaEvolutionPage() {
                 {c.display_name} ({c.name})
               </option>
             ))}
-          </select>
+          </Select>
 
           {selectedCollection && (
-            <>
-              <h3 className="font-medium mb-2">Fields</h3>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
+            <div className="mt-4">
+              <h3 className="font-medium text-slate-900 mb-2">Fields</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
                 {fieldsQuery.data?.map((f) => (
                   <div
                     key={f.id}
-                    className={`p-2 rounded cursor-pointer ${
-                      selectedField?.id === f.id ? "bg-blue-100" : "hover:bg-gray-100"
+                    className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                      selectedField?.id === f.id
+                        ? "bg-indigo-50 border-indigo-300 shadow-sm"
+                        : "bg-white border-slate-200 hover:border-slate-300"
                     }`}
                     onClick={() => setSelectedField(f)}
                   >
-                    <span className="font-medium">{f.display_name}</span>
-                    <span className="text-gray-500 text-sm ml-2">({f.name}: {f.field_type})</span>
+                    <span className="font-medium text-slate-900">{f.display_name}</span>
+                    <span className="text-slate-500 text-sm ml-2">({f.name}: {f.field_type})</span>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Operation</h2>
-          <select
-            className="w-full border rounded px-3 py-2 mb-4"
+        {/* Operation Panel */}
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Operation</h2>
+          </div>
+          <Select
             value={operation}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               setOperation(e.target.value);
               setPreviewResult(null);
             }}
@@ -259,62 +274,57 @@ export default function SchemaEvolutionPage() {
               <option value="restore_field" disabled={!selectedField}>Restore Field</option>
               <option value="change_field_type" disabled={!selectedField}>Change Field Type</option>
             </optgroup>
-          </select>
+          </Select>
 
           {(operation === "rename_collection" || operation === "rename_field") && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">New Name (slug)</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
+            <div className="space-y-3 mt-4">
+              <FormField label="New Name (slug)">
+                <Input
                   value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
                   placeholder="e.g., new_name"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">New Display Name (optional)</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
+              </FormField>
+              <FormField label="New Display Name" hint="Optional">
+                <Input
                   value={newDisplayName}
-                  onChange={(e) => setNewDisplayName(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDisplayName(e.target.value)}
                   placeholder="e.g., New Name"
                 />
-              </div>
+              </FormField>
             </div>
           )}
 
           {operation === "change_field_type" && (
-            <div>
-              <label className="block text-sm font-medium mb-1">New Type</label>
-              <select
-                className="w-full border rounded px-3 py-2"
-                value={newType}
-                onChange={(e) => setNewType(e.target.value)}
-              >
-                <option value="">-- Select Type --</option>
-                {conversionsQuery.data?.safe_conversions
-                  .filter((c) => c.from === selectedField?.field_type)
-                  .map((c) => (
-                    <option key={c.to} value={c.to}>
-                      {c.to} - {c.description}
-                    </option>
-                  ))}
-              </select>
+            <div className="mt-4">
+              <FormField label="New Type">
+                <Select
+                  value={newType}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewType(e.target.value)}
+                >
+                  <option value="">-- Select Type --</option>
+                  {conversionsQuery.data?.safe_conversions
+                    .filter((c) => c.from === selectedField?.field_type)
+                    .map((c) => (
+                      <option key={c.to} value={c.to}>
+                        {c.to} - {c.description}
+                      </option>
+                    ))}
+                </Select>
+              </FormField>
               {selectedField && conversionsQuery.data?.safe_conversions.filter((c) => c.from === selectedField.field_type).length === 0 && (
-                <p className="text-sm text-gray-500 mt-2">No safe conversions available for type "{selectedField.field_type}"</p>
+                <p className="text-sm text-slate-500 mt-2">No safe conversions available for type "{selectedField.field_type}"</p>
               )}
             </div>
           )}
 
           {(operation === "soft_delete_field" || operation === "hard_delete_field") && selectedField && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
+            <div className={`mt-4 p-3 rounded-xl text-sm ${operation === "soft_delete_field" ? "bg-amber-50 border border-amber-200" : "bg-rose-50 border border-rose-200"}`}>
               {operation === "soft_delete_field" ? (
-                <p>This will hide the field from the UI and block writes. Data is preserved.</p>
+                <p className="text-amber-800">This will hide the field from the UI and block writes. Data is preserved.</p>
               ) : (
-                <p className="text-red-600 font-medium">
+                <p className="text-rose-600 font-medium">
+                  <AlertTriangle className="h-4 w-4 inline mr-1" />
                   WARNING: This will permanently delete all data in this column!
                 </p>
               )}
@@ -322,22 +332,24 @@ export default function SchemaEvolutionPage() {
           )}
 
           <div className="flex gap-2 mt-4">
-            <button
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+            <Button
+              variant="secondary"
               onClick={handlePreview}
               disabled={!operation || isLoading}
+              icon={<RefreshCw className="h-4 w-4" />}
             >
               Preview
-            </button>
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            </Button>
+            <Button
               onClick={handleApply}
               disabled={!operation || isLoading}
+              loading={isLoading}
+              icon={<ArrowRight className="h-4 w-4" />}
             >
-              {isLoading ? "Applying..." : "Apply"}
-            </button>
+              Apply
+            </Button>
           </div>
-        </div>
+        </Card>
       </div>
 
       {previewResult && (

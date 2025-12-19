@@ -132,6 +132,15 @@ class AppUserListOut(BaseModel):
         from_attributes = True
 
 
+class AppUserCreateIn(BaseModel):
+    email: EmailStr
+    password: str | None = Field(None, min_length=8, max_length=128)
+    is_email_verified: bool = False
+    is_disabled: bool = False
+
+
 class AppUserUpdateIn(BaseModel):
+    email: EmailStr | None = None
+    password: str | None = Field(None, min_length=8, max_length=128)
     is_disabled: bool | None = None
     is_email_verified: bool | None = None

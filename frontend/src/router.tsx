@@ -23,6 +23,8 @@ import ViewsPage from "./routes/views";
 import ValidationsPage from "./routes/validations";
 import FilesPage from "./routes/files";
 import { AuthPage } from "./routes/auth";
+import RbacPage from "./routes/rbac";
+import UsersPage from "./routes/users";
 import { isAuthenticated } from "./lib/auth";
 import { queryClient } from "./lib/queryClient";
 
@@ -143,11 +145,22 @@ const authRoute = new Route({
   component: AuthPage,
 });
 
+const rbacRoute = new Route({
+  getParentRoute: () => authedRoute,
+  path: "projects/$projectId/rbac",
+  component: RbacPage,
+});
+
+const usersRoute = new Route({
+  getParentRoute: () => authedRoute,
+  path: "projects/$projectId/users",
+  component: UsersPage,
+});
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
-  authedRoute.addChildren([dashboardRoute, projectRoute, schemaRoute, dataRoute, logsRoute, webhooksRoute, workflowsRoute, policiesRoute, schemaEvolutionRoute, relationsRoute, viewsRoute, validationsRoute, filesRoute, authRoute]),
+  authedRoute.addChildren([dashboardRoute, projectRoute, schemaRoute, dataRoute, logsRoute, webhooksRoute, workflowsRoute, policiesRoute, schemaEvolutionRoute, relationsRoute, viewsRoute, validationsRoute, filesRoute, authRoute, rbacRoute, usersRoute]),
 ]);
 
 export const router = new Router({

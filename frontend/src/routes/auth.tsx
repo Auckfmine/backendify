@@ -1,6 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { KeyRound, Users, Settings, Code, Copy, Check, Trash2, Ban, Shield } from "lucide-react";
 
 import {
   fetchAuthSettings,
@@ -13,7 +14,7 @@ import {
   AppUser,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
-import { Button, Card, SectionTitle } from "../components/ui";
+import { Button, Card, PageHeader, Badge, FormField, Input, Select, SectionTitle } from "../components/ui";
 
 export function AuthPage() {
   const params = useRouterState({ select: (s) => s.matches.at(-1)?.params }) as { projectId: string } | undefined;
@@ -73,37 +74,53 @@ export function AuthPage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        eyebrow="Security"
+        title="Authentication"
+        description="Manage authentication settings and app users"
+        icon={<Shield className="h-6 w-6" />}
+      />
+
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 pb-2">
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit">
         <button
           onClick={() => setActiveTab("settings")}
-          className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === "settings"
-              ? "bg-emerald-100 text-emerald-800 border-b-2 border-emerald-600"
-              : "text-slate-600 hover:bg-slate-100"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          Auth Settings
+          <span className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Auth Settings
+          </span>
         </button>
         <button
           onClick={() => setActiveTab("users")}
-          className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === "users"
-              ? "bg-emerald-100 text-emerald-800 border-b-2 border-emerald-600"
-              : "text-slate-600 hover:bg-slate-100"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          App Users ({appUsers?.length || 0})
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            App Users ({appUsers?.length || 0})
+          </span>
         </button>
         <button
           onClick={() => setActiveTab("developer")}
-          className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
             activeTab === "developer"
-              ? "bg-emerald-100 text-emerald-800 border-b-2 border-emerald-600"
-              : "text-slate-600 hover:bg-slate-100"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
           }`}
         >
-          Developer
+          <span className="flex items-center gap-2">
+            <Code className="h-4 w-4" />
+            Developer
+          </span>
         </button>
       </div>
 

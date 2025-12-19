@@ -4,6 +4,11 @@ from app.schemas.auth import LoginIn, RefreshIn, RegisterIn, TokenPair
 from app.schemas.collection import CollectionCreate, CollectionOut, FieldCreate, FieldOut
 from app.schemas.policy import PolicyCreate, PolicyOut, PolicyUpdate
 from app.schemas.project import ProjectCreate, ProjectOut
+from app.schemas.role import (
+    RoleCreate, RoleUpdate, RoleOut,
+    AppUserRoleCreate, AppUserRoleOut,
+    AssignRolesRequest, UserRolesOut,
+)
 from app.schemas.user import UserOut
 
 __all__ = [
@@ -21,6 +26,13 @@ __all__ = [
     "PolicyUpdate",
     "RefreshIn",
     "RegisterIn",
+    "RoleCreate",
+    "RoleUpdate",
+    "RoleOut",
+    "AppUserRoleCreate",
+    "AppUserRoleOut",
+    "AssignRolesRequest",
+    "UserRolesOut",
     "SchemaOpOut",
     "TokenPair",
     "ProjectCreate",

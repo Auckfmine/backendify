@@ -10,7 +10,7 @@ from app.api import deps
 from app.core.config import settings
 from app.core.rate_limit import check_rate_limit
 from app.models.project import Project
-from app.models.app_user import AppUser, ProjectAuthSettings
+from app.models.app_user import ProjectAuthSettings
 from app.schemas.app_auth import (
     AppUserRegisterIn,
     AppUserLoginIn,
@@ -23,6 +23,7 @@ from app.schemas.app_auth import (
     PasswordChangeIn,
 )
 from app.services import app_auth
+from app.services.app_user_service import AppUserRecord, get_app_user_by_id
 
 router = APIRouter()
 
@@ -38,7 +39,7 @@ def get_current_app_user(
     project: Project = Depends(deps.get_project_public),
     db: Session = Depends(deps.get_db),
     authorization: str = Header(...),
-) -> AppUser:
+) -> AppUserRecord:
     """Dependency to get the current authenticated app user."""
     if not authorization.startswith("Bearer "):
         from fastapi import HTTPException
@@ -47,7 +48,7 @@ def get_current_app_user(
     token = authorization[7:]  # Remove "Bearer " prefix
     app_user_id = app_auth.decode_app_user_access_token(token, project.id)
     
-    app_user = app_auth.get_app_user_by_id(db, project.id, app_user_id)
+    app_user = get_app_user_by_id(db, project.id, app_user_id)
     if not app_user:
         from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="User not found")
@@ -156,7 +157,7 @@ def logout(
 
 @router.get("/me", response_model=AppUserMeOut)
 def get_me(
-    app_user: AppUser = Depends(get_current_app_user),
+    app_user: AppUserRecord = Depends(get_current_app_user),
 ):
     """Get current app user info."""
     return AppUserMeOut(
@@ -170,13 +171,14 @@ def get_me(
 def change_password(
     payload: PasswordChangeIn,
     request: Request,
-    app_user: AppUser = Depends(get_current_app_user),
+    app_user: AppUserRecord = Depends(get_current_app_user),
+    project: Project = Depends(deps.get_project_public),
     db: Session = Depends(deps.get_db),
 ):
     """Change password for the current app user."""
     ip, user_agent = get_client_info(request)
     app_auth.change_app_user_password(
-        db, app_user, payload.current_password, payload.new_password, ip, user_agent
+        db, project.id, app_user.id, payload.current_password, payload.new_password, ip, user_agent
     )
     return None
 
@@ -184,12 +186,13 @@ def change_password(
 @router.post("/logout/all", status_code=status.HTTP_204_NO_CONTENT)
 def logout_all_sessions(
     request: Request,
-    app_user: AppUser = Depends(get_current_app_user),
+    app_user: AppUserRecord = Depends(get_current_app_user),
+    project: Project = Depends(deps.get_project_public),
     db: Session = Depends(deps.get_db),
 ):
     """Logout from all sessions (revoke all refresh tokens)."""
     ip, user_agent = get_client_info(request)
-    app_auth.logout_all_app_user_sessions(db, app_user, ip, user_agent)
+    app_auth.logout_all_app_user_sessions(db, project.id, app_user.id, app_user.email, ip, user_agent)
     return None
 
 
@@ -199,7 +202,8 @@ def logout_all_sessions(
 
 @router.post("/verify/send", status_code=status.HTTP_200_OK)
 def send_verification_email(
-    app_user: AppUser = Depends(get_current_app_user),
+    app_user: AppUserRecord = Depends(get_current_app_user),
+    project: Project = Depends(deps.get_project_public),
     db: Session = Depends(deps.get_db),
 ):
     """
@@ -210,7 +214,7 @@ def send_verification_email(
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Email already verified")
     
-    token = app_auth.create_email_verification_token(db, app_user)
+    token = app_auth.create_email_verification_token(db, project.id, app_user.id)
     
     # In production: send email with token/link
     # For now, return token directly for testing

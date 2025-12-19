@@ -1,11 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: "Inter", "Space Grotesk", system-ui, -apple-system, sans-serif;
-  background: radial-gradient(circle at 20% 20%, #ecfeff 0, #f8fafc 40%, #e0f2fe 70%, #fff 100%);
-  color: #0f172a;
+  font-family: "Sora", "Space Grotesk", system-ui, -apple-system, sans-serif;
+  color: #0b1224;
+  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12), transparent 25%),
+    radial-gradient(circle at 90% 10%, rgba(14, 165, 233, 0.12), transparent 22%),
+    linear-gradient(140deg, #f8fafc, #eef2ff 50%, #f8fafc 100%);
 }
 
 * {
@@ -15,9 +19,86 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: radial-gradient(circle at 15% 30%, rgba(14, 165, 233, 0.08), transparent 35%),
+    radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.1), transparent 32%),
+    linear-gradient(180deg, #f8fafc, #f1f5f9);
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c7d2fe, #a5b4fc);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a5b4fc, #818cf8);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #a5b4fc transparent;
+}
+
+/* Thin scrollbar variant for sidebar and smaller areas */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Toast animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
 }

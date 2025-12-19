@@ -22,6 +22,10 @@ class Field(Base):
     default_value: Mapped[str | None] = mapped_column(String, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # System fields cannot be deleted or have their type changed
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Hidden fields are never exposed in API responses (e.g., password_hash)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     relation_target_collection_id: Mapped[str | None] = mapped_column(String, ForeignKey("collections.id"), nullable=True)
     relation_type: Mapped[str | None] = mapped_column(String(32), nullable=True)

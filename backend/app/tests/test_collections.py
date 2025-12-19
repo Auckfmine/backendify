@@ -28,7 +28,7 @@ def test_list_collections(client):
     token, project_id = bootstrap_project(client)
     client.post(
         f"/api/projects/{project_id}/schema/collections",
-        json={"name": "users", "display_name": "Users"},
+        json={"name": "posts", "display_name": "Posts"},
         headers=auth_headers(token),
     )
     client.post(
@@ -39,9 +39,10 @@ def test_list_collections(client):
     res = client.get(f"/api/projects/{project_id}/schema/collections", headers=auth_headers(token))
     assert res.status_code == 200
     data = res.json()
-    assert len(data) == 2
+    # 3 collections: _users (auto-created) + posts + comments
+    assert len(data) == 3
     names = {c["name"] for c in data}
-    assert names == {"users", "comments"}
+    assert names == {"_users", "posts", "comments"}
 
 
 def test_get_collection(client):

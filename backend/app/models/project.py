@@ -8,7 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.app_user import AppUser, ProjectAuthSettings
+    from app.models.app_user import ProjectAuthSettings
+    from app.models.role import Role
 
 
 class Project(Base):
@@ -27,9 +28,10 @@ class Project(Base):
     collections: Mapped[List["Collection"]] = relationship(
         "Collection", back_populates="project", cascade="all, delete-orphan"
     )
-    app_users: Mapped[List["AppUser"]] = relationship(
-        "AppUser", back_populates="project", cascade="all, delete-orphan"
-    )
+    # App users are now stored in the _users collection, not as a relationship
     auth_settings: Mapped[Optional["ProjectAuthSettings"]] = relationship(
         "ProjectAuthSettings", back_populates="project", uselist=False, cascade="all, delete-orphan"
+    )
+    roles: Mapped[List["Role"]] = relationship(
+        "Role", back_populates="project", cascade="all, delete-orphan"
     )

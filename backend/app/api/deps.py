@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.api_key import ApiKey
-from app.models.app_user import AppUser
 from app.models.project import Project
 from app.models.user import User
 from app.services.api_keys import authenticate_api_key
 from app.services.auth import decode_access_token
 from app.services.projects import get_project_for_user
+from app.services.app_user_service import AppUserRecord
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -27,7 +27,7 @@ class Principal:
     """Unified auth context for all request types."""
     type: str  # "admin_user", "app_user", "api_key", "anonymous"
     admin_user: Optional[User] = None
-    app_user: Optional[AppUser] = None
+    app_user: Optional[AppUserRecord] = None
     api_key: Optional[ApiKey] = None
     project_id: Optional[str] = None
     
@@ -100,6 +100,7 @@ def get_principal(
     Returns a Principal object identifying the request context.
     """
     from app.services.app_auth import decode_app_user_access_token, APP_USER_TOKEN_TYPE
+    from app.services.app_user_service import get_app_user_by_id
     from jose import jwt, JWTError
     
     # Try Bearer token first
@@ -111,9 +112,9 @@ def get_principal(
             token_type = unverified.get("type")
             
             if token_type == APP_USER_TOKEN_TYPE:
-                # App user token
+                # App user token - get from _users collection
                 app_user_id = decode_app_user_access_token(token, project_id)
-                app_user = db.get(AppUser, app_user_id)
+                app_user = get_app_user_by_id(db, project_id, app_user_id)
                 if app_user and not app_user.is_disabled:
                     return Principal(
                         type="app_user",

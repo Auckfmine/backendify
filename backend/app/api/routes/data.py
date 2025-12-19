@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.api.deps import Principal
+from app.models.collection import Collection
 from app.models.field import Field
 from app.models.project import Project
 from app.services.audit_service import log_audit_event
@@ -22,6 +23,30 @@ from app.services.validation_service import validate_record
 from app.services.webhook_service import emit_event
 
 router = APIRouter()
+
+
+def _get_hidden_fields(db: Session, collection: Collection) -> set[str]:
+    """Get the set of hidden field names for a collection."""
+    hidden_fields = db.query(Field).filter(
+        Field.collection_id == collection.id,
+        Field.is_hidden == True,
+        Field.is_deleted == False,
+    ).all()
+    return {f.sql_column_name for f in hidden_fields}
+
+
+def _filter_hidden_fields(record: dict[str, Any], hidden_fields: set[str]) -> dict[str, Any]:
+    """Remove hidden fields from a record."""
+    if not hidden_fields:
+        return record
+    return {k: v for k, v in record.items() if k not in hidden_fields}
+
+
+def _filter_records(records: list[dict[str, Any]], hidden_fields: set[str]) -> list[dict[str, Any]]:
+    """Remove hidden fields from a list of records."""
+    if not hidden_fields:
+        return records
+    return [_filter_hidden_fields(r, hidden_fields) for r in records]
 
 
 def _check_policy(db: Session, collection, action: str, principal: Principal, record: dict | None = None):
@@ -97,7 +122,9 @@ def create_record(
     })
     db.commit()
     
-    return result
+    # Filter hidden fields from response
+    hidden_fields = _get_hidden_fields(db, collection)
+    return _filter_hidden_fields(result, hidden_fields)
 
 
 @router.get("/{collection_name}")
@@ -232,8 +259,13 @@ def list_collection_records(
         sort=validated_sort,
     )
     total = count_records(db, project.id, collection, filters=filters if filters else None)
+    
+    # Filter hidden fields from response
+    hidden_fields = _get_hidden_fields(db, collection)
+    filtered_records = _filter_records(records, hidden_fields)
+    
     return {
-        "records": records,
+        "records": filtered_records,
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -251,7 +283,10 @@ def get_single_record(
     collection = get_collection(db, project, collection_name)
     record = get_record_by_id(db, project.id, collection, record_id)
     _check_policy(db, collection, "read", principal, record)
-    return record
+    
+    # Filter hidden fields from response
+    hidden_fields = _get_hidden_fields(db, collection)
+    return _filter_hidden_fields(record, hidden_fields)
 
 
 @router.patch("/{collection_name}/{record_id}")
@@ -293,7 +328,9 @@ def update_single_record(
     })
     db.commit()
     
-    return result
+    # Filter hidden fields from response
+    hidden_fields = _get_hidden_fields(db, collection)
+    return _filter_hidden_fields(result, hidden_fields)
 
 
 @router.delete("/{collection_name}/{record_id}", status_code=status.HTTP_204_NO_CONTENT)

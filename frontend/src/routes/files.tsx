@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useRef, useState } from "react";
+import { FileBox, Upload, Download, Trash2, HardDrive, FolderOpen } from "lucide-react";
 import {
   deleteFile,
   fetchFiles,
@@ -9,6 +10,7 @@ import {
   uploadFile,
   type StoredFile,
 } from "../lib/api";
+import { Button, Card, Input, PageHeader, Badge, FormField, StatCard, EmptyState } from "../components/ui";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -70,164 +72,193 @@ export default function FilesPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">File Storage</h1>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Storage"
+        title="File Storage"
+        description="Upload and manage files for your project"
+        icon={<FileBox className="h-6 w-6" />}
+      />
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-xl border border-rose-200">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-emerald-600 text-sm p-3 bg-emerald-50 rounded-xl border border-emerald-200">
           {success}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Upload File</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Bucket (optional)</label>
-              <input
-                type="text"
-                className="w-full border rounded px-3 py-2"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Upload Panel */}
+        <Card padding="md">
+          <div className="flex items-center gap-2 mb-4">
+            <Upload className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Upload File</h2>
+          </div>
+          <div className="space-y-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <FormField label="Bucket" hint="Optional">
+              <Input
                 value={bucket}
-                onChange={(e) => setBucket(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBucket(e.target.value)}
                 placeholder="e.g., images, documents"
               />
-            </div>
+            </FormField>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="isPublic"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
               />
-              <label htmlFor="isPublic" className="text-sm">Make file public</label>
+              <label htmlFor="isPublic" className="text-sm text-slate-700">Make file public</label>
             </div>
-            <div>
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-indigo-300 transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
                 onChange={handleFileSelect}
-                className="w-full text-sm"
+                className="w-full text-sm text-slate-600"
                 disabled={uploadMutation.isPending}
               />
             </div>
             {uploadMutation.isPending && (
-              <p className="text-sm text-blue-600">Uploading...</p>
+              <p className="text-sm text-indigo-600 font-medium">Uploading...</p>
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Storage Stats</h2>
+        {/* Stats Panel */}
+        <Card padding="md">
+          <div className="flex items-center gap-2 mb-4">
+            <HardDrive className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Storage Stats</h2>
+          </div>
           {statsQuery.data ? (
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Files:</span>
-                <span className="font-medium">{statsQuery.data.file_count}</span>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                <span className="text-slate-600">Files</span>
+                <Badge tone="indigo">{statsQuery.data.file_count}</Badge>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Size:</span>
-                <span className="font-medium">{formatBytes(statsQuery.data.total_bytes)}</span>
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                <span className="text-slate-600">Total Size</span>
+                <Badge tone="emerald">{formatBytes(statsQuery.data.total_bytes)}</Badge>
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">Loading...</p>
+            <div className="space-y-2">
+              <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
+              <div className="h-12 animate-pulse rounded-xl bg-slate-100" />
+            </div>
           )}
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-lg font-semibold mb-4">Filter</h2>
-          <div>
-            <label className="block text-sm font-medium mb-1">By Bucket</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2"
+        {/* Filter Panel */}
+        <Card padding="md">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderOpen className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Filter</h2>
+          </div>
+          <FormField label="By Bucket">
+            <Input
               value={filterBucket}
-              onChange={(e) => setFilterBucket(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilterBucket(e.target.value)}
               placeholder="Filter by bucket name"
             />
-          </div>
-        </div>
+          </FormField>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">Files ({filesQuery.data?.length || 0})</h2>
+      {/* Files Table */}
+      <Card padding="md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">Files</h2>
+          <Badge tone="indigo">{filesQuery.data?.length || 0} files</Badge>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left p-3 font-medium">Filename</th>
-                <th className="text-left p-3 font-medium">Type</th>
-                <th className="text-left p-3 font-medium">Size</th>
-                <th className="text-left p-3 font-medium">Bucket</th>
-                <th className="text-left p-3 font-medium">Public</th>
-                <th className="text-left p-3 font-medium">Uploaded</th>
-                <th className="text-left p-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filesQuery.data?.map((file: StoredFile) => (
-                <tr key={file.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">
-                    <div className="font-medium">{file.original_filename}</div>
-                    <div className="text-xs text-gray-400">{file.id.slice(0, 8)}...</div>
-                  </td>
-                  <td className="p-3 text-gray-600">{file.content_type}</td>
-                  <td className="p-3">{formatBytes(file.size_bytes)}</td>
-                  <td className="p-3">
-                    {file.bucket ? (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                        {file.bucket}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="p-3">
-                    {file.is_public ? (
-                      <span className="text-green-600">Yes</span>
-                    ) : (
-                      <span className="text-gray-400">No</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-gray-600">
-                    {new Date(file.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="p-3">
-                    <div className="flex gap-2">
-                      <a
-                        href={getFileDownloadUrl(projectId, file.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        Download
-                      </a>
-                      <button
-                        className="text-red-600 hover:underline text-sm"
-                        onClick={() => deleteMutation.mutate(file.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+        
+        {filesQuery.isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+            ))}
+          </div>
+        ) : filesQuery.data?.length ? (
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Filename</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Type</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Size</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Bucket</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Public</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Uploaded</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600 uppercase tracking-wider text-xs">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filesQuery.data?.length === 0 && (
-            <p className="text-gray-500 text-center py-8">No files uploaded yet</p>
-          )}
-        </div>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filesQuery.data?.map((file: StoredFile) => (
+                  <tr key={file.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900">{file.original_filename}</div>
+                      <div className="text-xs text-slate-400 font-mono">{file.id.slice(0, 8)}...</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{file.content_type}</td>
+                    <td className="px-4 py-3 text-slate-900">{formatBytes(file.size_bytes)}</td>
+                    <td className="px-4 py-3">
+                      {file.bucket ? (
+                        <Badge tone="indigo">{file.bucket}</Badge>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {file.is_public ? (
+                        <Badge tone="emerald">Public</Badge>
+                      ) : (
+                        <Badge tone="slate">Private</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {new Date(file.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <a
+                          href={getFileDownloadUrl(projectId, file.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Download
+                        </a>
+                        <button
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                          onClick={() => deleteMutation.mutate(file.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={<FileBox className="h-6 w-6" />}
+            title="No files yet"
+            description="Upload your first file to get started"
+          />
+        )}
+      </Card>
     </div>
   );
 }

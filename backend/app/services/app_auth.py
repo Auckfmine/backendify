@@ -2,6 +2,7 @@
 App User Authentication Service
 
 Handles authentication for end-users of customer apps (separate from admin auth).
+Uses the _users collection for user storage instead of a separate AppUser model.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -17,8 +18,15 @@ from app.core.security import (
     hash_token,
     verify_password,
 )
-from app.models.app_user import AppUser, AppRefreshToken, ProjectAuthSettings, AppEmailToken, AppOtpCode, AppIdentity
+from app.models.app_user import AppRefreshToken, ProjectAuthSettings, AppEmailToken, AppOtpCode, AppIdentity
 from app.models.project import Project
+from app.services.app_user_service import (
+    AppUserRecord,
+    get_app_user_by_id,
+    get_app_user_by_email,
+    create_app_user,
+    update_app_user,
+)
 from app.services.audit_service import (
     log_auth_event,
     AUTH_ACTION_REGISTER,
@@ -74,7 +82,7 @@ def _create_app_user_access_token(
 
 def issue_app_user_tokens(
     db: Session,
-    app_user: AppUser,
+    app_user: AppUserRecord,
     auth_settings: ProjectAuthSettings,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
@@ -114,7 +122,7 @@ def register_app_user(
     password: str,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> tuple[AppUser, str, str, int]:
+) -> tuple[AppUserRecord, str, str, int]:
     """
     Register a new app user for a project.
     Returns (app_user, access_token, refresh_token, expires_in).
@@ -136,10 +144,7 @@ def register_app_user(
         )
     
     # Check if user already exists
-    existing = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.email == email.lower()
-    ).first()
+    existing = get_app_user_by_email(db, project.id, email)
     
     if existing:
         raise HTTPException(
@@ -147,17 +152,15 @@ def register_app_user(
             detail="User with this email already exists"
         )
     
-    # Create the user
-    app_user = AppUser(
-        project_id=project.id,
+    # Create the user in _users collection
+    app_user = create_app_user(
+        db,
+        project.id,
         email=email.lower(),
         password_hash=get_password_hash(password),
         is_email_verified=False,
         is_disabled=False,
     )
-    db.add(app_user)
-    db.commit()
-    db.refresh(app_user)
     
     # Issue tokens
     access_token, refresh_token, expires_in = issue_app_user_tokens(
@@ -182,7 +185,7 @@ def login_app_user(
     password: str,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> tuple[AppUser, str, str, int]:
+) -> tuple[AppUserRecord, str, str, int]:
     """
     Login an app user.
     Returns (app_user, access_token, refresh_token, expires_in).
@@ -197,10 +200,7 @@ def login_app_user(
         )
     
     # Find the user
-    app_user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.email == email.lower()
-    ).first()
+    app_user = get_app_user_by_email(db, project.id, email)
     
     if not app_user or not app_user.password_hash:
         raise HTTPException(
@@ -249,7 +249,7 @@ def refresh_app_user_tokens(
     refresh_token: str,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> tuple[AppUser, str, str, int]:
+) -> tuple[AppUserRecord, str, str, int]:
     """
     Refresh tokens for an app user (with rotation).
     Returns (app_user, new_access_token, new_refresh_token, expires_in).
@@ -287,8 +287,8 @@ def refresh_app_user_tokens(
     db_token.last_used_at = now
     db.commit()
     
-    # Get the user
-    app_user = db.query(AppUser).filter(AppUser.id == db_token.app_user_id).first()
+    # Get the user from _users collection
+    app_user = get_app_user_by_id(db, project.id, db_token.app_user_id)
     if not app_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -345,20 +345,22 @@ def logout_app_user(
 
 def logout_all_app_user_sessions(
     db: Session,
-    app_user: AppUser,
+    project_id: str,
+    app_user_id: str,
+    email: Optional[str] = None,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
 ) -> int:
     """Revoke all refresh tokens for an app user. Returns count of revoked tokens."""
     result = db.query(AppRefreshToken).filter(
-        AppRefreshToken.app_user_id == app_user.id,
+        AppRefreshToken.app_user_id == app_user_id,
         AppRefreshToken.revoked.is_(False)
     ).update({"revoked": True})
     
     # Log audit event
     log_auth_event(
-        db, app_user.project_id, AUTH_ACTION_LOGOUT,
-        app_user_id=app_user.id, email=app_user.email,
+        db, project_id, AUTH_ACTION_LOGOUT,
+        app_user_id=app_user_id, email=email,
         ip_address=ip_address, user_agent=user_agent,
         details={"all_sessions": True, "revoked_count": result}
     )
@@ -406,14 +408,6 @@ def decode_app_user_access_token(token: str, project_id: str) -> str:
         )
 
 
-def get_app_user_by_id(db: Session, project_id: str, app_user_id: str) -> Optional[AppUser]:
-    """Get an app user by ID."""
-    return db.query(AppUser).filter(
-        AppUser.project_id == project_id,
-        AppUser.id == app_user_id
-    ).first()
-
-
 def get_auth_providers(db: Session, project_id: str) -> dict:
     """Get enabled auth providers for a project."""
     auth_settings = _get_auth_settings(db, project_id)
@@ -448,13 +442,21 @@ def update_auth_settings(
 
 def change_app_user_password(
     db: Session,
-    app_user: AppUser,
+    project_id: str,
+    app_user_id: str,
     current_password: str,
     new_password: str,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
 ) -> None:
     """Change an app user's password."""
+    app_user = get_app_user_by_id(db, project_id, app_user_id)
+    if not app_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
     if not app_user.password_hash:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -467,11 +469,11 @@ def change_app_user_password(
             detail="Current password is incorrect"
         )
     
-    app_user.password_hash = get_password_hash(new_password)
+    update_app_user(db, project_id, app_user_id, password_hash=get_password_hash(new_password))
     
     # Log audit event
     log_auth_event(
-        db, app_user.project_id, AUTH_ACTION_PASSWORD_CHANGE,
+        db, project_id, AUTH_ACTION_PASSWORD_CHANGE,
         app_user_id=app_user.id, email=app_user.email,
         ip_address=ip_address, user_agent=user_agent
     )
@@ -487,12 +489,13 @@ EMAIL_TOKEN_EXPIRY_HOURS = 24
 
 def create_email_verification_token(
     db: Session,
-    app_user: AppUser,
+    project_id: str,
+    app_user_id: str,
 ) -> str:
     """Create an email verification token for an app user."""
     # Invalidate any existing tokens
     db.query(AppEmailToken).filter(
-        AppEmailToken.app_user_id == app_user.id,
+        AppEmailToken.app_user_id == app_user_id,
         AppEmailToken.purpose == "verify_email",
         AppEmailToken.used_at.is_(None)
     ).delete()
@@ -502,8 +505,8 @@ def create_email_verification_token(
     token_hash = hash_token(token)
     
     email_token = AppEmailToken(
-        project_id=app_user.project_id,
-        app_user_id=app_user.id,
+        project_id=project_id,
+        app_user_id=app_user_id,
         token_hash=token_hash,
         purpose="verify_email",
         expires_at=datetime.now(tz=timezone.utc) + timedelta(hours=EMAIL_TOKEN_EXPIRY_HOURS),
@@ -520,7 +523,7 @@ def verify_email_token(
     token: str,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> AppUser:
+) -> AppUserRecord:
     """Verify an email verification token and mark user's email as verified."""
     token_hash = hash_token(token)
     
@@ -553,14 +556,14 @@ def verify_email_token(
     email_token.used_at = now
     
     # Get and update user
-    app_user = db.query(AppUser).filter(AppUser.id == email_token.app_user_id).first()
+    app_user = get_app_user_by_id(db, project_id, email_token.app_user_id)
     if not app_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
         )
     
-    app_user.is_email_verified = True
+    update_app_user(db, project_id, app_user.id, is_email_verified=True)
     
     # Log audit event
     log_auth_event(
@@ -570,7 +573,8 @@ def verify_email_token(
     )
     db.commit()
     
-    return app_user
+    # Return updated user
+    return get_app_user_by_id(db, project_id, app_user.id)
 
 
 # ============================================================================
@@ -589,10 +593,7 @@ def create_password_reset_token(
     Create a password reset token for an app user.
     Returns None if user doesn't exist (to prevent email enumeration).
     """
-    app_user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.email == email.lower()
-    ).first()
+    app_user = get_app_user_by_email(db, project.id, email)
     
     if not app_user:
         # Return None but don't raise error (prevent email enumeration)
@@ -629,7 +630,7 @@ def reset_password_with_token(
     new_password: str,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> AppUser:
+) -> AppUserRecord:
     """Reset password using a password reset token."""
     token_hash = hash_token(token)
     
@@ -662,14 +663,14 @@ def reset_password_with_token(
     email_token.used_at = now
     
     # Get and update user
-    app_user = db.query(AppUser).filter(AppUser.id == email_token.app_user_id).first()
+    app_user = get_app_user_by_id(db, project_id, email_token.app_user_id)
     if not app_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User not found"
         )
     
-    app_user.password_hash = get_password_hash(new_password)
+    update_app_user(db, project_id, app_user.id, password_hash=get_password_hash(new_password))
     
     # Log audit event
     log_auth_event(
@@ -679,7 +680,7 @@ def reset_password_with_token(
     )
     db.commit()
     
-    return app_user
+    return get_app_user_by_id(db, project_id, app_user.id)
 
 
 # ============================================================================
@@ -719,22 +720,18 @@ def send_otp_code(
     
     # For login purpose, check if user exists (create if not for magic link)
     if purpose == "login":
-        app_user = db.query(AppUser).filter(
-            AppUser.project_id == project.id,
-            AppUser.email == email.lower()
-        ).first()
+        app_user = get_app_user_by_email(db, project.id, email)
         
         # For magic link, auto-create user if doesn't exist
         if not app_user and auth_settings.enable_magic_link and auth_settings.allow_public_signup:
-            app_user = AppUser(
-                project_id=project.id,
+            app_user = create_app_user(
+                db,
+                project.id,
                 email=email.lower(),
                 password_hash=None,  # No password for magic link users
                 is_email_verified=False,
                 is_disabled=False,
             )
-            db.add(app_user)
-            db.commit()
         elif not app_user:
             # Return success but don't create code (prevent email enumeration)
             return None
@@ -774,7 +771,7 @@ def verify_otp_code(
     purpose: str = "login",
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> tuple[AppUser, str, str, int]:
+) -> tuple[AppUserRecord, str, str, int]:
     """
     Verify an OTP code and return tokens if valid.
     Returns (app_user, access_token, refresh_token, expires_in).
@@ -830,10 +827,7 @@ def verify_otp_code(
     db.delete(otp)
     
     # Get or create user
-    app_user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.email == email.lower()
-    ).first()
+    app_user = get_app_user_by_email(db, project.id, email)
     
     if not app_user:
         raise HTTPException(
@@ -849,7 +843,8 @@ def verify_otp_code(
     
     # Mark email as verified (OTP login proves email ownership)
     if not app_user.is_email_verified:
-        app_user.is_email_verified = True
+        update_app_user(db, project.id, app_user.id, is_email_verified=True)
+        app_user = get_app_user_by_id(db, project.id, app_user.id)
     
     # Issue tokens
     access_token, refresh_token, expires_in = issue_app_user_tokens(
@@ -880,7 +875,7 @@ def oauth_login_or_register(
     email: Optional[str],
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
-) -> tuple[AppUser, str, str, int]:
+) -> tuple[AppUserRecord, str, str, int]:
     """
     Handle OAuth login/registration.
     - If identity exists, login the linked user
@@ -912,7 +907,7 @@ def oauth_login_or_register(
     
     if identity:
         # Identity exists - login the linked user
-        app_user = db.query(AppUser).filter(AppUser.id == identity.app_user_id).first()
+        app_user = get_app_user_by_id(db, project.id, identity.app_user_id)
         if not app_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -928,10 +923,7 @@ def oauth_login_or_register(
         # Identity doesn't exist - check if email matches existing user
         app_user = None
         if email:
-            app_user = db.query(AppUser).filter(
-                AppUser.project_id == project.id,
-                AppUser.email == email.lower()
-            ).first()
+            app_user = get_app_user_by_email(db, project.id, email)
         
         if app_user:
             # Link identity to existing user
@@ -948,16 +940,14 @@ def oauth_login_or_register(
                     detail="Public signup is not allowed for this project"
                 )
             
-            app_user = AppUser(
-                project_id=project.id,
+            app_user = create_app_user(
+                db,
+                project.id,
                 email=email.lower() if email else None,
                 password_hash=None,  # No password for OAuth users
                 is_email_verified=True,  # OAuth email is verified by provider
                 is_disabled=False,
             )
-            db.add(app_user)
-            db.commit()
-            db.refresh(app_user)
             
             # Log registration
             log_auth_event(
@@ -980,7 +970,8 @@ def oauth_login_or_register(
     
     # Mark email as verified if not already (OAuth proves email ownership)
     if email and not app_user.is_email_verified:
-        app_user.is_email_verified = True
+        update_app_user(db, project.id, app_user.id, is_email_verified=True)
+        app_user = get_app_user_by_id(db, project.id, app_user.id)
     
     # Issue tokens
     access_token, refresh_token, expires_in = issue_app_user_tokens(

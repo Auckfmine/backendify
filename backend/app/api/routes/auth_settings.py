@@ -3,20 +3,22 @@ Auth Settings Routes (Admin)
 
 Endpoints for project admins to configure app user authentication settings.
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.models.project import Project
-from app.models.user import User
-from app.models.app_user import AppUser, ProjectAuthSettings
+from app.models.app_user import ProjectAuthSettings
+from app.core.security import get_password_hash
 from app.schemas.app_auth import (
     AuthSettingsOut,
     AuthSettingsUpdate,
     AppUserListOut,
+    AppUserCreateIn,
     AppUserUpdateIn,
 )
 from app.services import app_auth
+from app.services import app_user_service
 
 router = APIRouter()
 
@@ -66,10 +68,38 @@ def list_app_users(
     offset: int = 0,
 ):
     """List app users for a project (admin only)."""
-    users = db.query(AppUser).filter(
-        AppUser.project_id == project.id
-    ).order_by(AppUser.created_at.desc()).offset(offset).limit(limit).all()
-    return users
+    users = app_user_service.list_app_users(db, project.id, limit=limit, offset=offset)
+    return [_user_record_to_dict(u) for u in users]
+
+
+@router.post("/users", response_model=AppUserListOut, status_code=status.HTTP_201_CREATED)
+def create_app_user(
+    payload: AppUserCreateIn,
+    project: Project = Depends(deps.get_project_member),
+    db: Session = Depends(deps.get_db),
+):
+    """Create a new app user (admin only)."""
+    # Check if user already exists
+    existing = app_user_service.get_app_user_by_email(db, project.id, payload.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this email already exists"
+        )
+    
+    # Hash password if provided
+    password_hash = get_password_hash(payload.password) if payload.password else None
+    
+    user = app_user_service.create_app_user(
+        db,
+        project.id,
+        email=payload.email,
+        password_hash=password_hash,
+        is_email_verified=payload.is_email_verified,
+        is_disabled=payload.is_disabled,
+    )
+    
+    return _user_record_to_dict(user)
 
 
 @router.get("/users/{app_user_id}", response_model=AppUserListOut)
@@ -79,17 +109,12 @@ def get_app_user(
     db: Session = Depends(deps.get_db),
 ):
     """Get an app user by ID (admin only)."""
-    from fastapi import HTTPException
-    
-    user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.id == app_user_id
-    ).first()
+    user = app_user_service.get_app_user_by_id(db, project.id, app_user_id)
     
     if not user:
         raise HTTPException(status_code=404, detail="App user not found")
     
-    return user
+    return _user_record_to_dict(user)
 
 
 @router.patch("/users/{app_user_id}", response_model=AppUserListOut)
@@ -99,25 +124,33 @@ def update_app_user(
     project: Project = Depends(deps.get_project_member),
     db: Session = Depends(deps.get_db),
 ):
-    """Update an app user (admin only) - enable/disable, verify email."""
-    from fastapi import HTTPException
-    
-    user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.id == app_user_id
-    ).first()
+    """Update an app user (admin only) - email, password, enable/disable, verify email."""
+    user = app_user_service.get_app_user_by_id(db, project.id, app_user_id)
     
     if not user:
         raise HTTPException(status_code=404, detail="App user not found")
     
-    if payload.is_disabled is not None:
-        user.is_disabled = payload.is_disabled
-    if payload.is_email_verified is not None:
-        user.is_email_verified = payload.is_email_verified
+    # Check if email is being changed and if it's already taken
+    if payload.email and payload.email.lower() != user.email.lower():
+        existing = app_user_service.get_app_user_by_email(db, project.id, payload.email)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User with this email already exists"
+            )
     
-    db.commit()
-    db.refresh(user)
-    return user
+    # Hash password if provided
+    password_hash = get_password_hash(payload.password) if payload.password else None
+    
+    updated_user = app_user_service.update_app_user(
+        db, project.id, app_user_id,
+        email=payload.email,
+        password_hash=password_hash,
+        is_disabled=payload.is_disabled,
+        is_email_verified=payload.is_email_verified,
+    )
+    
+    return _user_record_to_dict(updated_user)
 
 
 @router.delete("/users/{app_user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -127,18 +160,12 @@ def delete_app_user(
     db: Session = Depends(deps.get_db),
 ):
     """Delete an app user (admin only)."""
-    from fastapi import HTTPException
-    
-    user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.id == app_user_id
-    ).first()
+    user = app_user_service.get_app_user_by_id(db, project.id, app_user_id)
     
     if not user:
         raise HTTPException(status_code=404, detail="App user not found")
     
-    db.delete(user)
-    db.commit()
+    app_user_service.delete_app_user(db, project.id, app_user_id)
     return None
 
 
@@ -149,15 +176,21 @@ def revoke_app_user_sessions(
     db: Session = Depends(deps.get_db),
 ):
     """Revoke all sessions for an app user (admin only)."""
-    from fastapi import HTTPException
-    
-    user = db.query(AppUser).filter(
-        AppUser.project_id == project.id,
-        AppUser.id == app_user_id
-    ).first()
+    user = app_user_service.get_app_user_by_id(db, project.id, app_user_id)
     
     if not user:
         raise HTTPException(status_code=404, detail="App user not found")
     
-    app_auth.logout_all_app_user_sessions(db, user)
+    app_auth.logout_all_app_user_sessions(db, project.id, user.id, email=user.email)
     return None
+
+
+def _user_record_to_dict(user: app_user_service.AppUserRecord) -> dict:
+    """Convert AppUserRecord to dict for Pydantic serialization."""
+    return {
+        "id": user.id,
+        "email": user.email,
+        "is_email_verified": user.is_email_verified,
+        "is_disabled": user.is_disabled,
+        "created_at": user.created_at,
+    }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { Eye, Plus, Trash2, Play, Code, Filter, ArrowUpDown } from "lucide-react";
 import {
   createView,
   deleteView,
@@ -17,6 +18,7 @@ import {
   type ViewSort,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { Button, Card, Input, PageHeader, Badge, FormField, Select, EmptyState, Textarea } from "../components/ui";
 
 export default function ViewsPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
@@ -178,44 +180,50 @@ export default function ViewsPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Query Builder (Views)</h1>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Data"
+        title="Query Builder (Views)"
+        description="Create and manage read-optimized projections of your data"
+        icon={<Eye className="h-6 w-6" />}
+      />
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-rose-600 text-sm p-3 bg-rose-50 rounded-xl border border-rose-200">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="flex items-center gap-2 text-emerald-600 text-sm p-3 bg-emerald-50 rounded-xl border border-emerald-200">
           {success}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-4">
+        <Card padding="md">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Saved Views</h2>
-            <button
-              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+            <h2 className="text-lg font-semibold text-slate-900">Saved Views</h2>
+            <Button
               onClick={() => {
                 setShowCreateForm(!showCreateForm);
                 setSelectedView(null);
                 setExecuteResult(null);
               }}
+              variant={showCreateForm ? "secondary" : "primary"}
+              icon={showCreateForm ? undefined : <Plus className="h-4 w-4" />}
             >
               {showCreateForm ? "Cancel" : "New View"}
-            </button>
+            </Button>
           </div>
           <div className="space-y-2">
             {viewsQuery.data?.map((v) => (
               <div
                 key={v.id}
-                className={`p-3 rounded cursor-pointer border ${
+                className={`p-3 rounded-xl cursor-pointer transition-all border-2 ${
                   selectedView?.id === v.id
-                    ? "bg-blue-50 border-blue-300"
-                    : "hover:bg-gray-50 border-gray-200"
+                    ? "bg-indigo-50 border-indigo-300 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-slate-300"
                 }`}
                 onClick={() => {
                   setSelectedView(v);
@@ -223,21 +231,30 @@ export default function ViewsPage() {
                   setExecuteResult(null);
                 }}
               >
-                <div className="font-medium">{v.display_name}</div>
-                <div className="text-sm text-gray-500">{v.name}</div>
-                <div className="text-xs text-gray-400 mt-1">v{v.version}</div>
+                <div className="flex items-center gap-2">
+                  <Eye className={`h-4 w-4 ${selectedView?.id === v.id ? "text-indigo-600" : "text-slate-400"}`} />
+                  <div>
+                    <div className="font-medium text-slate-900">{v.display_name}</div>
+                    <div className="text-xs text-slate-500 font-mono">{v.name}</div>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-400 mt-1 ml-6">v{v.version}</div>
               </div>
             ))}
             {viewsQuery.data?.length === 0 && (
-              <p className="text-gray-500 text-sm">No views yet</p>
+              <EmptyState
+                icon={<Eye className="h-5 w-5" />}
+                title="No views yet"
+                description="Create your first view to get started"
+              />
             )}
           </div>
-        </div>
+        </Card>
 
         <div className="lg:col-span-2 space-y-6">
           {showCreateForm && (
-            <div className="bg-white rounded-lg shadow p-4">
-              <h2 className="text-lg font-semibold mb-4">Create New View</h2>
+            <Card padding="md">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Create New View</h2>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -248,36 +265,28 @@ export default function ViewsPage() {
                 className="space-y-4"
               >
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Name (slug)</label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2"
+                  <FormField label="Name (slug)">
+                    <Input
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="e.g., active_users"
                       required
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Display Name</label>
-                    <input
-                      type="text"
-                      className="w-full border rounded px-3 py-2"
+                  </FormField>
+                  <FormField label="Display Name">
+                    <Input
                       value={formData.display_name}
-                      onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, display_name: e.target.value })}
                       placeholder="e.g., Active Users"
                       required
                     />
-                  </div>
+                  </FormField>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Base Collection</label>
-                  <select
-                    className="w-full border rounded px-3 py-2"
+                <FormField label="Base Collection">
+                  <Select
                     value={formData.base_collection_id}
-                    onChange={(e) => setFormData({ ...formData, base_collection_id: e.target.value, projection: [], filters: [], sorts: [] })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, base_collection_id: e.target.value, projection: [], filters: [], sorts: [] })}
                     required
                   >
                     <option value="">-- Select Collection --</option>
@@ -286,18 +295,16 @@ export default function ViewsPage() {
                         {c.display_name} ({c.name})
                       </option>
                     ))}
-                  </select>
-                </div>
+                  </Select>
+                </FormField>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    className="w-full border rounded px-3 py-2"
+                <FormField label="Description">
+                  <Textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
                     rows={2}
                   />
-                </div>
+                </FormField>
 
                 {selectedCollection && fieldsQuery.data && (
                   <>
@@ -327,37 +334,38 @@ export default function ViewsPage() {
 
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-medium">Filters</label>
-                        <button type="button" className="text-sm text-blue-600 hover:underline" onClick={addFilter}>
-                          + Add Filter
+                        <label className="text-sm font-medium text-slate-700">Filters</label>
+                        <button type="button" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium" onClick={addFilter}>
+                          <Plus className="h-3.5 w-3.5" />
+                          Add Filter
                         </button>
                       </div>
                       {formData.filters.map((filter, i) => (
-                        <div key={i} className="flex gap-2 mb-2 items-center flex-wrap">
-                          <select
-                            className="border rounded px-2 py-1 text-sm"
+                        <div key={i} className="flex gap-2 mb-2 items-center flex-wrap p-2 bg-slate-50 rounded-lg">
+                          <Select
                             value={filter.field}
-                            onChange={(e) => updateFilter(i, { field: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateFilter(i, { field: e.target.value })}
+                            className="text-sm"
                           >
                             <option value="">Field</option>
                             {["id", "created_at", ...fieldsQuery.data.map((f) => f.sql_column_name)].map((col) => (
                               <option key={col} value={col}>{col}</option>
                             ))}
-                          </select>
-                          <select
-                            className="border rounded px-2 py-1 text-sm"
+                          </Select>
+                          <Select
                             value={filter.operator}
-                            onChange={(e) => updateFilter(i, { operator: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateFilter(i, { operator: e.target.value })}
+                            className="text-sm"
                           >
                             {operatorsQuery.data?.operators.map((op) => (
                               <option key={op.value} value={op.value}>{op.label}</option>
                             ))}
-                          </select>
+                          </Select>
                           {formData.params_schema.length > 0 && (
-                            <select
-                              className="border rounded px-2 py-1 text-sm bg-yellow-50"
+                            <Select
+                              className="text-sm bg-amber-50"
                               value={(filter as { is_param?: boolean; param_name?: string }).is_param ? (filter as { param_name?: string }).param_name || "" : ""}
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                                 if (e.target.value) {
                                   updateFilter(i, { is_param: true, param_name: e.target.value, value: undefined } as Partial<ViewFilter>);
                                 } else {
@@ -369,42 +377,42 @@ export default function ViewsPage() {
                               {formData.params_schema.map((p) => (
                                 <option key={p.name} value={p.name}>Use param: {p.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           )}
                           {!(filter as { is_param?: boolean }).is_param && (
-                            <input
-                              type="text"
-                              className="border rounded px-2 py-1 text-sm flex-1"
+                            <Input
+                              className="text-sm flex-1"
                               value={String(filter.value || "")}
-                              onChange={(e) => updateFilter(i, { value: e.target.value })}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateFilter(i, { value: e.target.value })}
                               placeholder="Value"
                             />
                           )}
                           {(filter as { is_param?: boolean; param_name?: string }).is_param && (
-                            <span className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                              = :{(filter as { param_name?: string }).param_name}
-                            </span>
+                            <Badge tone="amber">= :{(filter as { param_name?: string }).param_name}</Badge>
                           )}
-                          <button type="button" className="text-red-500 text-sm" onClick={() => removeFilter(i)}>×</button>
+                          <button type="button" className="text-rose-500 hover:text-rose-700 p-1" onClick={() => removeFilter(i)}>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       ))}
                     </div>
 
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="text-sm font-medium">Sort Order</label>
-                        <button type="button" className="text-sm text-blue-600 hover:underline" onClick={addSort}>
-                          + Add Sort
+                        <label className="text-sm font-medium text-slate-700">Sort Order</label>
+                        <button type="button" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium" onClick={addSort}>
+                          <Plus className="h-3.5 w-3.5" />
+                          Add Sort
                         </button>
                       </div>
                       {formData.sorts.map((sort, i) => (
-                        <div key={i} className="flex gap-2 mb-2 items-center flex-wrap">
+                        <div key={i} className="flex gap-2 mb-2 items-center flex-wrap p-2 bg-slate-50 rounded-lg">
                           {/* Field selection or param reference */}
                           {formData.params_schema.some((p: ParamDef) => p.type === "sort_field") ? (
-                            <select
-                              className="border rounded px-2 py-1 text-sm bg-yellow-50"
+                            <Select
+                              className="text-sm bg-amber-50"
                               value={(sort as { is_param?: boolean; param_name?: string }).is_param ? (sort as { param_name?: string }).param_name || "" : ""}
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                                 if (e.target.value) {
                                   updateSort(i, { is_param: true, param_name: e.target.value, field: "id" } as Partial<ViewSort>);
                                 } else {
@@ -416,31 +424,29 @@ export default function ViewsPage() {
                               {formData.params_schema.filter((p: ParamDef) => p.type === "sort_field").map((p: ParamDef) => (
                                 <option key={p.name} value={p.name}>Use param: {p.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           ) : null}
                           {!(sort as { is_param?: boolean }).is_param && (
-                            <select
-                              className="border rounded px-2 py-1 text-sm flex-1"
+                            <Select
+                              className="text-sm flex-1"
                               value={sort.field}
-                              onChange={(e) => updateSort(i, { field: e.target.value })}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateSort(i, { field: e.target.value })}
                             >
                               <option value="">Field</option>
                               {["id", "created_at", ...fieldsQuery.data.map((f) => f.sql_column_name)].map((col) => (
                                 <option key={col} value={col}>{col}</option>
                               ))}
-                            </select>
+                            </Select>
                           )}
                           {(sort as { is_param?: boolean }).is_param && (
-                            <span className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                              field: :{(sort as { param_name?: string }).param_name}
-                            </span>
+                            <Badge tone="amber">field: :{(sort as { param_name?: string }).param_name}</Badge>
                           )}
                           {/* Direction selection or param reference */}
                           {formData.params_schema.some((p: ParamDef) => p.type === "sort_direction") ? (
-                            <select
-                              className="border rounded px-2 py-1 text-sm bg-yellow-50"
+                            <Select
+                              className="text-sm bg-amber-50"
                               value={(sort as { desc_is_param?: boolean; desc_param_name?: string }).desc_is_param ? (sort as { desc_param_name?: string }).desc_param_name || "" : ""}
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                                 if (e.target.value) {
                                   updateSort(i, { desc_is_param: true, desc_param_name: e.target.value } as Partial<ViewSort>);
                                 } else {
@@ -452,24 +458,24 @@ export default function ViewsPage() {
                               {formData.params_schema.filter((p: ParamDef) => p.type === "sort_direction").map((p: ParamDef) => (
                                 <option key={p.name} value={p.name}>Use param: {p.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           ) : null}
                           {!(sort as { desc_is_param?: boolean }).desc_is_param && (
-                            <select
-                              className="border rounded px-2 py-1 text-sm"
+                            <Select
+                              className="text-sm"
                               value={sort.desc ? "desc" : "asc"}
-                              onChange={(e) => updateSort(i, { desc: e.target.value === "desc" })}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateSort(i, { desc: e.target.value === "desc" })}
                             >
                               <option value="asc">Ascending</option>
                               <option value="desc">Descending</option>
-                            </select>
+                            </Select>
                           )}
                           {(sort as { desc_is_param?: boolean }).desc_is_param && (
-                            <span className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                              dir: :{(sort as { desc_param_name?: string }).desc_param_name}
-                            </span>
+                            <Badge tone="amber">dir: :{(sort as { desc_param_name?: string }).desc_param_name}</Badge>
                           )}
-                          <button type="button" className="text-red-500 text-sm" onClick={() => removeSort(i)}>×</button>
+                          <button type="button" className="text-rose-500 hover:text-rose-700 p-1" onClick={() => removeSort(i)}>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -530,22 +536,21 @@ export default function ViewsPage() {
                   </div>
                   <div className="space-y-2">
                     {formData.params_schema.map((param, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <input
-                          type="text"
+                      <div key={i} className="flex gap-2 items-center p-2 bg-slate-50 rounded-lg">
+                        <Input
                           placeholder="name"
-                          className="border rounded px-2 py-1 text-sm w-24"
+                          className="text-sm w-24"
                           value={param.name}
-                          onChange={(e) => {
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             const updated = [...formData.params_schema];
                             updated[i] = { ...updated[i], name: e.target.value };
                             setFormData(prev => ({ ...prev, params_schema: updated }));
                           }}
                         />
-                        <select
-                          className="border rounded px-2 py-1 text-sm"
+                        <Select
+                          className="text-sm"
                           value={param.type}
-                          onChange={(e) => {
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                             const updated = [...formData.params_schema];
                             updated[i] = { ...updated[i], type: e.target.value };
                             setFormData(prev => ({ ...prev, params_schema: updated }));
@@ -558,11 +563,12 @@ export default function ViewsPage() {
                           <option value="offset">offset (pagination)</option>
                           <option value="sort_field">sort_field</option>
                           <option value="sort_direction">sort_direction</option>
-                        </select>
-                        <label className="flex items-center gap-1 text-sm">
+                        </Select>
+                        <label className="flex items-center gap-1 text-sm text-slate-700">
                           <input
                             type="checkbox"
                             checked={param.required}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                             onChange={(e) => {
                               const updated = [...formData.params_schema];
                               updated[i] = { ...updated[i], required: e.target.checked };
@@ -571,12 +577,11 @@ export default function ViewsPage() {
                           />
                           Required
                         </label>
-                        <input
-                          type="text"
+                        <Input
                           placeholder="description"
-                          className="border rounded px-2 py-1 text-sm flex-1"
+                          className="text-sm flex-1"
                           value={param.description}
-                          onChange={(e) => {
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             const updated = [...formData.params_schema];
                             updated[i] = { ...updated[i], description: e.target.value };
                             setFormData(prev => ({ ...prev, params_schema: updated }));
@@ -584,28 +589,29 @@ export default function ViewsPage() {
                         />
                         <button
                           type="button"
-                          className="text-red-500 text-sm"
+                          className="text-rose-500 hover:text-rose-700 p-1"
                           onClick={() => {
                             const updated = formData.params_schema.filter((_, idx) => idx !== i);
                             setFormData(prev => ({ ...prev, params_schema: updated }));
                           }}
                         >
-                          ×
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="submit"
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                  disabled={createMutation.isPending}
+                  loading={createMutation.isPending}
+                  icon={<Plus className="h-4 w-4" />}
+                  className="w-full"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create View"}
-                </button>
+                  Create View
+                </Button>
               </form>
-            </div>
+            </Card>
           )}
 
           {selectedView && (
@@ -620,25 +626,27 @@ export default function ViewsPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    <Button
                       onClick={() => executeMutation.mutate(selectedView.name)}
-                      disabled={executeMutation.isPending}
+                      loading={executeMutation.isPending}
+                      icon={<Play className="h-4 w-4" />}
                     >
-                      {executeMutation.isPending ? "Running..." : "Execute"}
-                    </button>
-                    <button
-                      className={`px-3 py-1 text-sm rounded ${showApiPanel ? "bg-purple-700 text-white" : "bg-purple-600 text-white hover:bg-purple-700"}`}
+                      Execute
+                    </Button>
+                    <Button
+                      variant="secondary"
                       onClick={() => setShowApiPanel(!showApiPanel)}
+                      icon={<Code className="h-4 w-4" />}
                     >
                       {showApiPanel ? "Hide API" : "API & Usage"}
-                    </button>
-                    <button
-                      className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                    </Button>
+                    <Button
+                      variant="danger"
                       onClick={() => deleteMutation.mutate(selectedView.name)}
+                      icon={<Trash2 className="h-4 w-4" />}
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

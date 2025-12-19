@@ -27,6 +27,7 @@ def create_policy(
     priority: int = 0,
     allowed_principals: str | None = None,
     require_email_verified: bool = False,
+    allowed_roles: str | None = None,
 ) -> Policy:
     if action not in VALID_ACTIONS:
         raise HTTPException(
@@ -69,6 +70,7 @@ def create_policy(
         is_active=True,
         allowed_principals=allowed_principals,
         require_email_verified=require_email_verified,
+        allowed_roles=allowed_roles,
     )
     db.add(policy)
     db.commit()
@@ -108,6 +110,7 @@ def update_policy(
     is_active: bool | None = None,
     allowed_principals: str | None = None,
     require_email_verified: bool | None = None,
+    allowed_roles: str | None = None,
 ) -> Policy:
     if effect is not None and effect not in VALID_EFFECTS:
         raise HTTPException(
@@ -147,6 +150,8 @@ def update_policy(
         policy.allowed_principals = allowed_principals
     if require_email_verified is not None:
         policy.require_email_verified = require_email_verified
+    if allowed_roles is not None:
+        policy.allowed_roles = allowed_roles
     
     db.commit()
     db.refresh(policy)
@@ -199,7 +204,8 @@ def check_permission_for_principal(
     1. Admin users always have full access (they own the project)
     2. If the principal type is in allowed_principals for the policy
     3. If require_email_verified is set and principal has verified email
-    4. If condition_json evaluates to true
+    4. If allowed_roles is set, check app_user has at least one required role
+    5. If condition_json evaluates to true
     """
     # Admin users (console users) always have full access to their project data
     if principal.type == "admin_user":
@@ -224,6 +230,11 @@ def check_permission_for_principal(
         if policy.require_email_verified and not principal.is_email_verified:
             continue
         
+        # Check RBAC roles (only applies to app_user principals)
+        if policy.allowed_roles and principal.type == "app_user":
+            if not _check_user_has_role(db, principal, policy.allowed_roles):
+                continue
+        
         # Check condition
         if policy.condition_json:
             condition = json.loads(policy.condition_json)
@@ -234,6 +245,27 @@ def check_permission_for_principal(
     
     # No matching policy - deny by default for security
     return False
+
+
+def _check_user_has_role(db: Session, principal: "Principal", allowed_roles: str) -> bool:
+    """Check if the app user has at least one of the allowed roles."""
+    if not principal.app_user:
+        return False
+    
+    # Parse allowed roles from comma-separated string
+    required_roles = {r.strip() for r in allowed_roles.split(",") if r.strip()}
+    if not required_roles:
+        return True  # No roles required
+    
+    # Import here to avoid circular imports
+    from app.services.rbac_service import get_user_roles
+    
+    # Get user's assigned roles
+    user_roles = get_user_roles(db, principal.app_user)
+    user_role_names = {role.name for role in user_roles}
+    
+    # Check if user has at least one required role
+    return bool(required_roles & user_role_names)
 
 
 def _get_allowed_principals(policy: Policy) -> list[str]:

@@ -5,6 +5,7 @@ from app.models.membership import Membership
 from app.models.project import Project
 from app.models.user import User
 from app.services.schema_manager import ensure_project_schema
+from app.services.users_collection import create_users_collection
 
 
 def create_project(db: Session, owner: User, name: str) -> Project:
@@ -15,6 +16,10 @@ def create_project(db: Session, owner: User, name: str) -> Project:
     db.add(membership)
     db.flush()
     ensure_project_schema(db, project, actor_user_id=owner.id)
+    
+    # Auto-create the _users collection for app user management
+    create_users_collection(db, project, actor_user_id=owner.id)
+    
     db.refresh(project)
     return project
 
