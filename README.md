@@ -65,6 +65,26 @@ Backendify is an open-source alternative to Firebase/Supabase that you can run o
   <img src="screenshots/10-audit-logs.png" alt="Audit Logs" width="800" />
 </p>
 
+### Webhooks
+<p align="center">
+  <img src="screenshots/11-webhooks.png" alt="Webhooks" width="800" />
+</p>
+
+### Workflows
+<p align="center">
+  <img src="screenshots/12-workflows.png" alt="Workflows" width="800" />
+</p>
+
+### Schema Evolution
+<p align="center">
+  <img src="screenshots/13-schema-evolution.png" alt="Schema Evolution" width="800" />
+</p>
+
+### Relationship Builder
+<p align="center">
+  <img src="screenshots/14-relations.png" alt="Relations" width="800" />
+</p>
+
 ---
 
 ## ✨ Features
