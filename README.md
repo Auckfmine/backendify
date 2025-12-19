@@ -12,6 +12,59 @@
 
 Backendify is an open-source alternative to Firebase/Supabase that you can run on your own infrastructure. Define your data schema through a visual UI, and get instant REST APIs with authentication, authorization, and real-time capabilities.
 
+<p align="center">
+  <img src="screenshots/03-login.png" alt="Backendify Login" width="800" />
+</p>
+
+---
+
+## 📸 Screenshots
+
+### Control Center Dashboard
+<p align="center">
+  <img src="screenshots/04-control-center.png" alt="Control Center" width="800" />
+</p>
+
+### Project Overview
+<p align="center">
+  <img src="screenshots/01-dashboard.png" alt="Project Dashboard" width="800" />
+</p>
+
+### Schema Builder
+<p align="center">
+  <img src="screenshots/02-schema-builder.png" alt="Schema Builder" width="800" />
+</p>
+
+### Validation Rules
+<p align="center">
+  <img src="screenshots/05-validations.png" alt="Validation Rules" width="800" />
+</p>
+
+### User Management
+<p align="center">
+  <img src="screenshots/07-users.png" alt="User Management" width="800" />
+</p>
+
+### Authentication Providers
+<p align="center">
+  <img src="screenshots/08-authentication.png" alt="Authentication" width="800" />
+</p>
+
+### Role-Based Access Control
+<p align="center">
+  <img src="screenshots/09-rbac.png" alt="RBAC" width="800" />
+</p>
+
+### File Storage
+<p align="center">
+  <img src="screenshots/06-file-storage.png" alt="File Storage" width="800" />
+</p>
+
+### Audit Logs
+<p align="center">
+  <img src="screenshots/10-audit-logs.png" alt="Audit Logs" width="800" />
+</p>
+
 ---
 
 ## ✨ Features
@@ -326,8 +379,8 @@ A simple todo list demonstrating CRUD operations. See [`examples/todo-app/`](./e
 - [x] Audit logs
 - [x] Webhooks
 - [x] Field validations
-- [ ] File/media storage
-- [ ] Email verification flow
+- [x] File/media storage
+- [x] Email verification flow
 - [ ] Real-time subscriptions (WebSocket)
 - [ ] OAuth/Social login
 - [ ] Rate limiting
